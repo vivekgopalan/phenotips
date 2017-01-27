@@ -164,7 +164,8 @@
        'genes': "$services.localization.render('phenotips.exportPreferences.field.genes')",
        'genes_comments': "$services.localization.render('phenotips.exportPreferences.field.genesComments')",
        'rejectedGenes': "$services.localization.render('phenotips.exportPreferences.field.rejectedGenes')",
-       'rejectedGenes_comments': "$services.localization.render('phenotips.exportPreferences.field.rejectGenesComments')"
+       'rejectedGenes_comments': "$services.localization.render('phenotips.exportPreferences.field.rejectGenesComments')",
+       'labeled_eids': "$services.localization.render('phenotips.UIXField.labeled_eids')"
   })
   #set($ignored = {
     'fields' : ['family_history', 'pedigree'],
@@ -191,6 +192,7 @@
        'author' : "$services.localization.render('phenotips.exportPreferences.field.author')",
        'date' : "$services.localization.render('phenotips.exportPreferences.field.date')",
        'allergies' : "$services.localization.render('PhenoTips.AllergiesDataClass_allergies')",
+       'labeled_eids' : "$services.localization.render('phenotips.UIXField.labeled_eids')",
        'genes' : "$services.localization.render('phenotips.exportPreferences.field.genes')",
        'genes_status' : "$services.localization.render('phenotips.exportPreferences.field.genesStatus')",
        'genes_strategy' : "$services.localization.render('phenotips.exportPreferences.field.genesStrategy')",
