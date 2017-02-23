@@ -503,6 +503,18 @@
               <to>org.phenotips.data.permissions.PatientAccess getPatientAccess(java.lang.String)</to>
               <justification>after SecurePatient update this service now needs to get its own non-read-only copy of a patient</justification>
             </difference>
+            <difference>
+              <className>org/phenotips/vocabulary/Vocabulary</className>
+              <differenceType>7012</differenceType>
+              <method>java.util.Collection getSupportedCategories()</method>
+              <justification>Adding support for vocabulary categories</justification>
+            </difference>
+            <difference>
+              <className>org/phenotips/vocabulary/Vocabulary</className>
+              <differenceType>7012</differenceType>
+              <method>java.util.List search(java.lang.String, java.lang.String, int, java.lang.String, java.lang.String)</method>
+              <justification>Adding support for vocabulary categories</justification>
+            </difference>
           </ignored>
           <excludes>
             <exclude>**/internal/**</exclude>
