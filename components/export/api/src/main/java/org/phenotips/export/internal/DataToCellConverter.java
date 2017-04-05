@@ -134,7 +134,6 @@ public class DataToCellConverter
         int y = 0;
         Set<? extends Feature> features = patient.getFeatures();
 
-        this.phenotypeHelper.newPatient();
         boolean categoriesEnabled = present.contains("type");
         List<Feature> sortedFeatures;
         Map<String, String> sectionFeatureLookup = new HashMap<>();
@@ -933,7 +932,6 @@ public class DataToCellConverter
         int y = 0;
         Set<? extends Feature> features = patient.getFeatures();
 
-        this.prenatalPhenotypeHelper.newPatient();
         features = this.prenatalPhenotypeHelper.filterFeaturesByPrenatal(features, true);
         List<Feature> sortedFeatures;
         sortedFeatures = this.prenatalPhenotypeHelper.sortFeaturesSimple(features);
