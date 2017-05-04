@@ -521,7 +521,7 @@
   font-size: .7em;
   text-transform: capitalize;
   margin-right: -20px;
-  color: #4D5860;
+  color: $theme.textColor;
 }
 
 #genePanelsExcludeGenesWrapper label {
