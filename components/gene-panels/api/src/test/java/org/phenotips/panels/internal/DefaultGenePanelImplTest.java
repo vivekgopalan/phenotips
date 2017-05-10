@@ -80,11 +80,11 @@ public class DefaultGenePanelImplTest
 
     private static final String HGNC_LABEL = "hgnc";
 
-    private static final String SIZE_LABEL = "size";
+    private static final String SIZE_LABEL = "returnedrows";
 
-    private static final String TOTAL_SIZE_LABEL = "totalSize";
+    private static final String TOTAL_SIZE_LABEL = "totalrows";
 
-    private static final String GENES_LABEL = "genes";
+    private static final String GENE_ROWS_LABEL = "rows";
 
     private static final String TERMS_LABEL = "terms";
 
@@ -154,7 +154,7 @@ public class DefaultGenePanelImplTest
         assertTrue(panel.getTermsForGeneList().isEmpty());
 
         final JSONObject expectedJSON = new JSONObject().put(SIZE_LABEL, 0).put(TOTAL_SIZE_LABEL, 0)
-            .put(GENES_LABEL, new JSONArray());
+            .put(GENE_ROWS_LABEL, new JSONArray());
         assertTrue(expectedJSON.similar(panel.toJSON()));
     }
 
@@ -253,7 +253,7 @@ public class DefaultGenePanelImplTest
         assertTrue(panel.getTermsForGeneList().isEmpty());
 
         final JSONObject expectedJSON = new JSONObject().put(SIZE_LABEL, 0).put(TOTAL_SIZE_LABEL, 0)
-            .put(GENES_LABEL, new JSONArray());
+            .put(GENE_ROWS_LABEL, new JSONArray());
         assertTrue(expectedJSON.similar(panel.toJSON()));
     }
 
@@ -268,7 +268,7 @@ public class DefaultGenePanelImplTest
         assertTrue(panel.getTermsForGeneList().isEmpty());
 
         final JSONObject expectedJSON = new JSONObject().put(SIZE_LABEL, 0).put(TOTAL_SIZE_LABEL, 0)
-            .put(GENES_LABEL, new JSONArray());
+            .put(GENE_ROWS_LABEL, new JSONArray());
         assertTrue(expectedJSON.similar(panel.toJSON()));
     }
 
@@ -449,7 +449,7 @@ public class DefaultGenePanelImplTest
         assertTrue(panel.getTermsForGeneList().isEmpty());
 
         final JSONObject expectedJSON = new JSONObject().put(SIZE_LABEL, 0).put(TOTAL_SIZE_LABEL, 0)
-            .put(GENES_LABEL, new JSONArray());
+            .put(GENE_ROWS_LABEL, new JSONArray());
         assertTrue(expectedJSON.similar(panel.toJSON()));
     }
 
@@ -565,7 +565,7 @@ public class DefaultGenePanelImplTest
             new JSONObject()
                 .put(SIZE_LABEL, 3)
                 .put(TOTAL_SIZE_LABEL, 3)
-                .put(GENES_LABEL,
+                .put(GENE_ROWS_LABEL,
                     new JSONArray()
                         .put(this.termsForGeneJSON1)
                         .put(this.termsForGeneJSON2)
