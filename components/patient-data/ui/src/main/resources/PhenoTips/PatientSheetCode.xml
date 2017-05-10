@@ -2393,7 +2393,7 @@ document.observe('xwiki:dom:loaded', function()
           return data.script;
         },
         'submitAjaxRequest' : function(searchBox, data, queryString, parameters) {
-          searchBox._builder.panelsDisplay.paginate(parameters, 1, 10);
+          searchBox._builder.panelsDisplay.paginate(parameters, 10);
         },
         'genePanels' : {
           'script' : XWiki.contextPath + '/rest/suggested-gene-panels',

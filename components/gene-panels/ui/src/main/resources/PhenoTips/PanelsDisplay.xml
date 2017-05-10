@@ -122,113 +122,90 @@
   var widgets = PhenoTips.widgets = PhenoTips.widgets || {};
 
   widgets.PanelsDisplay = Class.create({
-    'data' : {},
-    'param' : {},
-    'size' : 0,
-    'resultsToShow' : 6,
-    'page' : 1,
-    'startPageParam' : 'startPage',
-    'numResultsParam' : 'numResults',
-    'reqNoParam' : 'reqNo',
-    'presentParam' : 'present-term',
-    'absentParam' : 'absent-term',
+    'url' : '',
+    'baseUrl' : '',
+    'presentTerms' : [],
+    'absentTerms' : [],
+    'resultsToShow' : 10,
+    'presentParamLabel' : 'present-term',
+    'absentParamLabel' : 'absent-term',
 
     /**
      * Generates results for the first page based on new data provided.
-     * @param parameters the incomplete parameters, containing only the term information
-     * @param page the page number to render
+     * @param parameters the query parameters. Supported parameters are as follows:
+     *        "symptom" the symptoms that were found to be present.
+     *        "not_symptom" the symptoms that were found to be absent.
      * @param resultsToShow the number of results to show; uses the default value if null
      */
-    paginate : function(parameters, page, resultsToShow) {
-      this.param = {};
-      this.param[this.presentParam] = parameters.symptom || [];
-      this.param[this.absentParam] = parameters.not_symptom || [];
-      this.requestPageData(page, resultsToShow);
+    paginate : function(parameters, resultsToShow) {
+      this.presentTerms = [];
+      this.absentTerms = [];
+      this.resultsToShow = resultsToShow || this.resultsToShow;
+      this.updateLiveTable(parameters);
     },
 
-    requestPageData : function(page, resultsToShow) {
-      var _this = this;
-      this.page = page;
-      resultsToShow &amp;&amp; (this.resultsToShow = resultsToShow);
-
-      if (!this.param) {
-        this.updateDataContainer(null);
-        return;
-      }
-
-      this.param[this.startPageParam] = this.page;
-      this.param[this.numResultsParam] = this.resultsToShow;
-      this.param[this.reqNoParam] = ++this.service.expectedReqNo;
-
-      new Ajax.Request(this.service.script, {
-        method : 'POST',
-        parameters: _this.param,
-        contentType: 'application/x-www-form-urlencoded',
-        onCreate : function() {
-          _this.service.target.addClassName('loading');
-        },
-        onSuccess : function(response) {
-          _this.updateDataContainer(response.responseJSON);
-        },
-        onComplete : function() {
-          _this.service.target.removeClassName('loading');
+    /**
+     * Prompts redrawing of the LiveTable, by providing a new url with the updated parameters.
+     * @param parameters the query parameters. Supported parameters are as follows:
+     *        "symptom" the symptoms that were found to be present.
+     *        "not_symptom" the symptoms that were found to be absent.
+     */
+    updateLiveTable : function(parameters) {
+      var newUrl = this.buildNewUrl(parameters);
+      if (newUrl != this.url) {
+        this.url = newUrl;
+        this.service.target.__hiddenParent &amp;&amp; this.service.target.__hiddenParent.removeClassName('hidden');
+        if (this.table) {
+          this.table.updateBaseUrl(this.url);
+        } else {
+          var options = {'limit' : this.resultsToShow};
+          this.table = new XWiki.widgets.LiveTable(this.url, 'panels-livetable', this.buildRow.bind(this), options);
         }
-      });
+      }
     },
 
-    updateDataContainer : function(json) {
-      if (!json || json.reqNo != this.service.expectedReqNo || !json.genes || !json.size) {
-        // Empty the results service, and hide section objects.
-        this.resultsContainer.update(' ');
-        this.service.target.__hiddenParent &amp;&amp; this.service.target.__hiddenParent.addClassName('hidden');
-        return;
+    buildNewUrl : function(parameters) {
+      var newUrl = this.baseUrl;
+      if (parameters) {
+        this.presentTerms = parameters.symptom;
+        this.absentTerms = parameters.not_symptom;
+        var presentParams = (this.presentTerms &amp;&amp; (this.presentParamLabel + '='
+          + this.presentTerms.join('&amp;' + this.presentParamLabel + '='))) || '';
+        var absentParams = (this.absentTerms &amp;&amp; (this.absentParamLabel + '='
+          + this.absentTerms.join('&amp;' + this.absentParamLabel + '='))) || '';
+        newUrl += '?' + presentParams + absentParams;
       }
-      // Reset the data values.
-      this.size = json.size;
-      this.totalPages = json.totalPages;
-      this.data = json.genes;
-      this.firstItemRangeNo = (this.page - 1) * this.resultsToShow + 1;
-      this.lastItemRangeNo = this.firstItemRangeNo + this.size - 1;
-      this.totalSize = json.totalSize;
-      // Generate the results page
-      this.renderResults();
-      this.service.target.__hiddenParent &amp;&amp; this.service.target.__hiddenParent.removeClassName('hidden');
+      return newUrl;
     },
 
     /**
-     * Creates results for a calculated range of indexes.
+     * Builds a LiveTable row from the provided {@code geneObj json}.
      */
-    renderResults : function() {
-      this.setDataRanges();
-      var container = new Element('ul');
-      for (var i = 0; i &lt;= this.size - 1; i++) {
-        var geneRow = this.buildGeneRow(this.data[i]);
-        container.insert(geneRow);
-      }
-      this.resultsContainer.update(container);
+    buildRow : function(geneObj, idx, table) {
+      var geneNode = this.makeGeneNode(geneObj);
+      var listNode = new Element('ul');
+      listNode.insert(geneNode);
+      var rowElem = new Element('td')
+        .insert(listNode)
+      return new Element('tr').insert(rowElem);
     },
 
-    /**
-     * Builds a gene row, given an object that contains gene data.
-     * @param geneObj an objects that contains gene data
-     * @return {*} an html object describing the gene row
-     */
-    buildGeneRow : function(geneObj) {
+    makeGeneNode : function(geneObj) {
       var geneName = geneObj.gene_symbol;
       var geneId = geneObj.gene_id;
       var terms = geneObj.terms;
       var count = geneObj.count;
-      var geneSymbolElem = new Element('span', {'class' : 'gene-symbol', 'title' : geneName})
-        .insert(geneName);
-      var geneIdElem = new Element('span', {'class' : 'gene-id hidden'})
-        .insert(geneId);
       var associatedFeaturesElem = new Element('dl', {'class' : 'gene-panels-row-features'})
         .insert(new Element('dt').insert(this.getFeatureNames(terms)));
       var associatedFeatureIDsElem = new Element('span', {'class' : 'gene-panels-row-feature-ids hidden'})
         .insert(this.getFeatureIDs(terms));
+      var geneSymbolElem = new Element('span', {'class' : 'gene-symbol', 'title' : geneName})
+        .insert(geneName);
+      var geneIdElem = new Element('span', {'class' : 'gene-id hidden'})
+        .insert(geneId);
       var countElem = new Element('span', {'class' : 'gene-count hidden'})
         .insert(count);
-      var geneRow = new Element('li', {'class' : 'gene-panels-row'})
+      var geneNode = new Element('li', {'class' : 'gene-panels-row'})
         .insert(geneSymbolElem)
         .insert(geneIdElem)
         .insert(countElem);
@@ -236,11 +213,12 @@
       if (typeof(this.service.tooltip) != 'undefined') {
         var icon = new Element('span', {'class' : 'xHelpButton fa fa-info-circle ' + this.service.tooltip, 'title' : geneName});
         new PhenoTips.widgets.HelpButton(icon);
-        geneRow.insert(icon);
+        geneNode.insert(icon);
       }
-      geneRow.insert(associatedFeaturesElem);
-      geneRow.insert(associatedFeatureIDsElem);
-      return geneRow;
+
+      geneNode.insert(associatedFeaturesElem);
+      geneNode.insert(associatedFeatureIDsElem);
+      return geneNode;
     },
 
     /**
@@ -266,80 +244,21 @@
     },
 
     /**
-     * Sets the ranges for the data that will be displayed.
-     */
-    setDataRanges : function()
-    {
-      if (this.page &gt; 1) {
-        this.prevArrow.removeClassName('hidden');
-        this.toFirst.removeClassName('hidden');
-      } else {
-        this.prevArrow.addClassName('hidden');
-        this.toFirst.addClassName('hidden');
-      }
-
-      if (this.page &lt; this.totalPages) {
-        this.nextArrow.removeClassName('hidden');
-        this.toLast.removeClassName('hidden');
-      } else {
-        this.nextArrow.addClassName('hidden');
-        this.toLast.addClassName('hidden');
-      }
-
-      var pageCount = "$escapetool.javascript($services.localization.render('phenotips.panels.panelsDisplay.pageCount'))";
-      pageCount = pageCount.replace(/___number_range___/g, this.firstItemRangeNo + "-" + this.lastItemRangeNo).replace(/___total___/g, this.totalSize);
-      this.curPage.update(pageCount);
-    },
-
-    /**
      * Creates the containers for displaying the results.
      */
     createResultsContainers : function() {
-      this.toFirst = new Element('span', {'class' : 'fa fa-angle-double-left fa-lg fa-fw hidden'});
-      this.prevArrow = new Element('span', {'class' : 'fa fa-angle-left fa-lg fa-fw hidden'});
-      this.curPage = new Element('span', {'class' : 'current-page'});
-      this.nextArrow = new Element('span', {'class' : 'fa fa-angle-right fa-lg fa-fw hidden'});
-      this.toLast = new Element('span', {'class' : 'fa fa-angle-double-right fa-lg fa-fw hidden'});
-      this.resultsContainer = new Element('div', {'class' : 'gene-search-page'});
-      this.pageSwitcher = new Element('div', {'id' : 'genePanelsPagination', 'class' : 'pagination-navigation'})
-        .insert(this.toFirst)
-        .insert(this.prevArrow)
-        .insert(this.curPage)
-        .insert(this.nextArrow)
-        .insert(this.toLast);
-      this.service.target.insert(this.resultsContainer);
-      this.service.target.insert(this.pageSwitcher);
-      this.attachNavigationListeners();
       this.attachDownloadListeners();
+      this.attachChangeListeners();
     },
 
-    /**
-     * Attach listeners to the navigation arrows.
-     */
-    attachNavigationListeners : function() {
+    attachChangeListeners : function() {
       var _this = this;
-      this.prevArrow.observe('click', function() {
-        _this.page--;
-        _this.requestPageData(_this.page, _this.resultsToShow);
-        _this.renderResults();
-      });
-
-      this.nextArrow.observe('click', function() {
-        _this.page++;
-        _this.requestPageData(_this.page, _this.resultsToShow);
-        _this.renderResults();
-      });
-
-      this.toFirst.observe('click', function() {
-        _this.page = 1;
-        _this.requestPageData(_this.page, _this.resultsToShow);
-        _this.renderResults();
-      });
-
-      this.toLast.observe('click', function() {
-        _this.page = _this.totalPages;
-        _this.requestPageData(_this.page, _this.resultsToShow);
-        _this.renderResults();
+      document.on("xwiki:livetable:panels-livetable:loadingComplete", function(event) {
+        if (event.memo &amp;&amp; event.memo.status &amp;&amp; event.memo.status != 200) {
+          _this.table.clearDisplay();
+          _this.table.clearCache();
+          _this.service.target.__hiddenParent &amp;&amp; _this.service.target.__hiddenParent.addClassName('hidden');
+        }
       });
     },
 
@@ -348,9 +267,19 @@
       this.saveButton &amp;&amp; this.saveButton.observe('click', function(event) {
         event.stop();
         var parameters = {};
-        parameters[_this.presentParam] = _this.param[_this.presentParam];
-        parameters[_this.absentParam] = _this.param[_this.absentParam];
+        parameters[_this.presentParamLabel] = _this.presentTerms || [];
+        parameters[_this.absentParamLabel] = _this.absentTerms || [];
         Event.fire(document, 'panels:export:requested', {'param' : parameters, 'service' : _this.service});
+      });
+    },
+
+    extendLiveTable : function() {
+      XWiki.widgets &amp;&amp; XWiki.widgets.LiveTable &amp;&amp; XWiki.widgets.LiveTable.addMethods({
+        updateBaseUrl : function(newBaseUrl) {
+          this.clearCache();
+          this.getUrl = newBaseUrl;
+          this.showRows(1, this.limit, null);
+        }
       });
     },
 
@@ -362,7 +291,9 @@
      */
     initialize : function(service, saveButton) {
       if (!service) {return;}
+      this.extendLiveTable();
       this.service = service;
+      this.baseUrl = service.script + "/livetable";
       this.saveButton = saveButton;
       this.createResultsContainers();
     }
@@ -477,20 +408,24 @@
       <cache>long</cache>
     </property>
     <property>
-      <code>#template("colorThemeInit.vm")
-.pagination-navigation {
-  text-align: right;
+      <code>#template('colorThemeInit.vm')
+#panels-livetable {
+  width: 100%;
 }
 
-#genePanelsPagination {
-  font-size: .85em;
+#panels-livetable .xwiki-livetable-display-container td {
+  text-align: left;
 }
 
-#genePanelsPagination &gt; .fa:hover {
-  background-color: rgba(0,0,0,0.1);
-  color: $theme.linkColor;
-  cursor: pointer;
-  transition: all 0.2s linear;
+#panels-livetable tbody.xwiki-livetable-display-body tr:hover,
+#panels-livetable tbody.xwiki-livetable-display-body tr.rowHover {
+  background-color: $theme.backgroundSecondaryColor;
+}
+
+#panels-livetable input.button,
+#panels-livetable .buttonwrapper button, .buttonwrapper a:visited,
+#panels-livetable .buttonwrapper a:link, .buttonwrapper a:active {
+  color: $theme.buttonPrimaryTextColor !important;
 }</code>
     </property>
     <property>
