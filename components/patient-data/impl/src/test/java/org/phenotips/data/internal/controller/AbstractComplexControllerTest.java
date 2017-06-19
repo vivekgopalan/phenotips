@@ -22,6 +22,7 @@ import org.phenotips.data.DictionaryPatientData;
 import org.phenotips.data.Patient;
 import org.phenotips.data.PatientData;
 import org.phenotips.data.PatientDataController;
+import org.phenotips.data.PatientWritePolicy;
 import org.phenotips.data.SimpleValuePatientData;
 import org.phenotips.data.VocabularyProperty;
 import org.phenotips.vocabulary.VocabularyManager;
@@ -34,7 +35,9 @@ import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.model.reference.ObjectPropertyReference;
 import org.xwiki.test.mockito.MockitoComponentMockingRule;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -50,6 +53,7 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import com.xpn.xwiki.XWikiContext;
 import com.xpn.xwiki.doc.XWikiDocument;
 import com.xpn.xwiki.objects.BaseObject;
 import com.xpn.xwiki.objects.BaseProperty;
@@ -62,7 +66,10 @@ import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 /**
  * Test for the {@link AbstractComplexController} defined methods (load, save, writeJSON, readJSON). These methods are
@@ -85,14 +92,24 @@ public class AbstractComplexControllerTest
 
     private static final String PROPERTY_5 = AbstractComplexControllerTestImplementation.PROPERTY_5;
 
+    private static final String ID_1 = "id1";
+
+    private static final String ID_2 = "id2";
+
+    private static final String ID_3 = "id3";
+
+    private static final String ID_4 = "id4";
+
+    private static final String ID_5 = "id5";
+
     @Rule
     public MockitoComponentMockingRule<PatientDataController<String>> mocker =
-        new MockitoComponentMockingRule<PatientDataController<String>>(
+        new MockitoComponentMockingRule<>(
             AbstractComplexControllerTestImplementation.class);
 
     @Rule
     public MockitoComponentMockingRule<PatientDataController<List<VocabularyProperty>>> codeFieldImplMocker =
-        new MockitoComponentMockingRule<PatientDataController<List<VocabularyProperty>>>(
+        new MockitoComponentMockingRule<>(
             AbstractComplexControllerCodeFieldsTestImplementation.class);
 
     @Mock
@@ -119,34 +136,71 @@ public class AbstractComplexControllerTest
     @Mock
     private BaseProperty<ObjectPropertyReference> baseProperty5;
 
+    @Mock
+    private VocabularyProperty vocabProperty1;
+
+    @Mock
+    private VocabularyProperty vocabProperty2;
+
+    @Mock
+    private VocabularyProperty vocabProperty3;
+
+    @Mock
+    private VocabularyProperty vocabProperty4;
+
+    @Mock
+    private VocabularyProperty vocabProperty5;
+
+    @Mock
+    private XWikiContext xcontext;
+
+    private PatientDataController<String> component;
+
+    private PatientDataController<List<VocabularyProperty>> codeFieldImplComponent;
+
     @Before
     public void setUp() throws Exception
     {
         MockitoAnnotations.initMocks(this);
+        this.component = this.mocker.getComponentUnderTest();
+        this.codeFieldImplComponent = this.codeFieldImplMocker.getComponentUnderTest();
+
+        final Provider<XWikiContext> xcp = this.mocker.getInstance(XWikiContext.TYPE_PROVIDER);
+        when(xcp.get()).thenReturn(this.xcontext);
+
+        final Provider<XWikiContext> xcp2 = this.codeFieldImplMocker.getInstance(XWikiContext.TYPE_PROVIDER);
+        when(xcp2.get()).thenReturn(this.xcontext);
 
         DocumentReference patientDocRef = new DocumentReference("wiki", "patient", "00000001");
         doReturn(patientDocRef).when(this.patient).getDocumentReference();
         doReturn(this.doc).when(this.patient).getXDocument();
         doReturn(this.data).when(this.doc).getXObject(Patient.CLASS_REFERENCE);
+        doReturn(this.data).when(this.doc).getXObject(Patient.CLASS_REFERENCE, true, this.xcontext);
 
         doReturn(this.baseProperty1).when(this.data).getField(PROPERTY_1);
         doReturn(this.baseProperty2).when(this.data).getField(PROPERTY_2);
         doReturn(this.baseProperty3).when(this.data).getField(PROPERTY_3);
         doReturn(this.baseProperty4).when(this.data).getField(PROPERTY_4);
         doReturn(this.baseProperty5).when(this.data).getField(PROPERTY_5);
+
+        when(vocabProperty1.getId()).thenReturn(ID_1);
+        when(vocabProperty2.getId()).thenReturn(ID_2);
+        when(vocabProperty3.getId()).thenReturn(ID_3);
+        when(vocabProperty4.getId()).thenReturn(ID_4);
+        when(vocabProperty5.getId()).thenReturn(ID_5);
     }
 
     @Test
     public void checkGetName() throws ComponentLookupException
     {
-        Assert.assertEquals(DATA_NAME, this.mocker.getComponentUnderTest().getName());
+        Assert.assertEquals(DATA_NAME, this.component.getName());
     }
 
     @Test
     public void verifyDefaultTestImplementationIsNotCodeFieldsOnly() throws ComponentLookupException
     {
         AbstractComplexController<String> controller =
-            (AbstractComplexController<String>) this.mocker.getComponentUnderTest();
+            (AbstractComplexController<String>) this.component;
         Assert.assertFalse(controller.isCodeFieldsOnly());
     }
 
@@ -158,14 +212,14 @@ public class AbstractComplexControllerTest
         Assert.assertTrue(controller.isCodeFieldsOnly());
     }
 
-    // -----------------------------------load() tests-----------------------------------
+    // --------------------------------------load() tests-------------------------------------
 
     @Test
     public void loadCatchesExceptionFromDocumentAccess() throws Exception
     {
         doReturn(null).when(this.patient).getXDocument();
 
-        PatientData<String> result = this.mocker.getComponentUnderTest().load(this.patient);
+        PatientData<String> result = this.component.load(this.patient);
 
         verify(this.mocker.getMockedLogger()).error(eq(PatientDataController.ERROR_MESSAGE_LOAD_FAILED), anyString());
 
@@ -177,7 +231,7 @@ public class AbstractComplexControllerTest
     {
         doReturn(null).when(this.doc).getXObject(Patient.CLASS_REFERENCE);
 
-        PatientData<String> result = this.mocker.getComponentUnderTest().load(this.patient);
+        PatientData<String> result = this.component.load(this.patient);
 
         Assert.assertNull(result);
     }
@@ -196,7 +250,7 @@ public class AbstractComplexControllerTest
         doReturn(datum4).when(this.baseProperty4).getValue();
         doReturn(datum5).when(this.baseProperty5).getValue();
 
-        PatientData<String> result = this.mocker.getComponentUnderTest().load(this.patient);
+        PatientData<String> result = this.component.load(this.patient);
 
         Assert.assertEquals(datum1, result.get(PROPERTY_1));
         Assert.assertEquals(datum2, result.get(PROPERTY_2));
@@ -229,6 +283,162 @@ public class AbstractComplexControllerTest
         Assert.assertThat(propertyTwoList, contains(hasProperty("id", is("HP:00000120"))));
     }
 
+    // -------------------------------------save() tests--------------------------------------
+
+    @Test
+    public void saveDoesNothingWhenPatientHasNoPatientClass()
+    {
+        when(this.doc.getXObject(Patient.CLASS_REFERENCE, true, this.xcontext)).thenReturn(null);
+        this.component.save(this.patient);
+    }
+
+    @Test
+    public void saveWithUpdatePolicyDoesNothingWhenDataIsNull()
+    {
+        when(this.patient.getData(DATA_NAME)).thenReturn(null);
+        this.component.save(this.patient, PatientWritePolicy.UPDATE);
+        verify(this.doc, times(1)).getXObject(Patient.CLASS_REFERENCE, true, this.xcontext);
+        verifyNoMoreInteractions(this.doc);
+    }
+
+    @Test
+    public void saveWithMergePolicyDoesNothingWhenDataIsNull()
+    {
+        when(this.patient.getData(DATA_NAME)).thenReturn(null);
+        this.component.save(this.patient, PatientWritePolicy.MERGE);
+        verify(this.doc, times(1)).getXObject(Patient.CLASS_REFERENCE, true, this.xcontext);
+        verifyNoMoreInteractions(this.doc);
+    }
+
+    @Test
+    public void saveWithReplacePolicyErasesAllPropertyDataFromDocWhenDataIsNull()
+    {
+        when(this.patient.getData(DATA_NAME)).thenReturn(null);
+        this.component.save(this.patient, PatientWritePolicy.REPLACE);
+        verify(this.doc, times(1)).getXObject(Patient.CLASS_REFERENCE, true, this.xcontext);
+        verifyNoMoreInteractions(this.doc);
+        verify(this.data, times(1)).set(PROPERTY_1, null, this.xcontext);
+        verify(this.data, times(1)).set(PROPERTY_2, null, this.xcontext);
+        verify(this.data, times(1)).set(PROPERTY_3, null, this.xcontext);
+        verify(this.data, times(1)).set(PROPERTY_4, null, this.xcontext);
+        verify(this.data, times(1)).set(PROPERTY_5, null, this.xcontext);
+        verifyNoMoreInteractions(this.data);
+    }
+
+    // --------------------------------save() non code fields---------------------------------
+    @Test
+    public void saveWithUpdatePolicyUpdatesOnlySpecifiedProperties()
+    {
+        final Map<String, String> dataMap = new LinkedHashMap<>();
+        dataMap.put(PROPERTY_2, PROPERTY_2);
+        dataMap.put(PROPERTY_5, PROPERTY_5);
+        doReturn(new DictionaryPatientData<>(DATA_NAME, dataMap)).when(this.patient).getData(DATA_NAME);
+        this.component.save(this.patient, PatientWritePolicy.UPDATE);
+        verify(this.doc, times(1)).getXObject(Patient.CLASS_REFERENCE, true, this.xcontext);
+        verifyNoMoreInteractions(this.doc);
+        verify(this.data, times(1)).set(PROPERTY_2, PROPERTY_2, this.xcontext);
+        verify(this.data, times(1)).set(PROPERTY_5, PROPERTY_5, this.xcontext);
+        verifyNoMoreInteractions(this.data);
+    }
+
+    @Test
+    public void saveWithMergePolicyMergesDataForSpecifiedProperties()
+    {
+        final Map<String, String> dataMap = new LinkedHashMap<>();
+        dataMap.put(PROPERTY_2, PROPERTY_2);
+        dataMap.put(PROPERTY_5, PROPERTY_5);
+        doReturn(new DictionaryPatientData<>(DATA_NAME, dataMap)).when(this.patient).getData(DATA_NAME);
+        this.component.save(this.patient, PatientWritePolicy.MERGE);
+        // Once when save() is called, another time when load() is called.
+        verify(this.doc, times(1)).getXObject(Patient.CLASS_REFERENCE, true, this.xcontext);
+        verify(this.doc, times(1)).getXObject(Patient.CLASS_REFERENCE);
+        verifyNoMoreInteractions(this.doc);
+        verify(this.data, times(1)).set(PROPERTY_2, PROPERTY_2, this.xcontext);
+        verify(this.data, times(1)).set(PROPERTY_5, PROPERTY_5, this.xcontext);
+        // When load() is called, there are 5 fields that are loaded.
+        verify(this.data, times(5)).getField(anyString());
+        verifyNoMoreInteractions(this.data);
+    }
+
+    @Test
+    public void saveWithReplacePolicyErasesAllControllerDataAndReplacesItWithProvidedData()
+    {
+        final Map<String, String> dataMap = new LinkedHashMap<>();
+        dataMap.put(PROPERTY_2, PROPERTY_2);
+        dataMap.put(PROPERTY_5, PROPERTY_5);
+        doReturn(new DictionaryPatientData<>(DATA_NAME, dataMap)).when(this.patient).getData(DATA_NAME);
+        this.component.save(this.patient, PatientWritePolicy.REPLACE);
+        verify(this.doc, times(1)).getXObject(Patient.CLASS_REFERENCE, true, this.xcontext);
+        verifyNoMoreInteractions(this.doc);
+        verify(this.data, times(1)).set(PROPERTY_1, null, this.xcontext);
+        verify(this.data, times(1)).set(PROPERTY_2, PROPERTY_2, this.xcontext);
+        verify(this.data, times(1)).set(PROPERTY_3, null, this.xcontext);
+        verify(this.data, times(1)).set(PROPERTY_4, null, this.xcontext);
+        verify(this.data, times(1)).set(PROPERTY_5, PROPERTY_5, this.xcontext);
+        verifyNoMoreInteractions(this.data);
+    }
+
+    // ----------------------------------save() code fields-----------------------------------
+
+    @Test
+    public void saveWithUpdatePolicyUpdatesOnlySpecifiedCodeFieldProperties()
+    {
+        final Map<String, List<VocabularyProperty>> dataMap = new LinkedHashMap<>();
+        dataMap.put(PROPERTY_1, Collections.emptyList());
+        dataMap.put(PROPERTY_2, Arrays.asList(this.vocabProperty1, this.vocabProperty2));
+        doReturn(new DictionaryPatientData<>(CODE_FIELDS_DATA_NAME, dataMap)).when(this.patient)
+            .getData(CODE_FIELDS_DATA_NAME);
+        this.codeFieldImplComponent.save(this.patient, PatientWritePolicy.UPDATE);
+        verify(this.doc, times(1)).getXObject(Patient.CLASS_REFERENCE, true, this.xcontext);
+        verifyNoMoreInteractions(this.doc);
+        verify(this.data, times(1)).set(PROPERTY_1, null, this.xcontext);
+        verify(this.data, times(1)).set(PROPERTY_2, Arrays.asList(ID_1, ID_2), this.xcontext);
+        verifyNoMoreInteractions(this.data);
+    }
+
+    @Test
+    public void saveWithMergePolicyMergesDataForSpecifiedCodeFieldProperties()
+    {
+        final BaseProperty pi1 = mock(BaseProperty.class);
+        final BaseProperty pi2 = mock(BaseProperty.class);
+
+        when(this.data.getField(PROPERTY_1)).thenReturn(pi1);
+        when(this.data.getField(PROPERTY_2)).thenReturn(pi2);
+        when(pi1.getValue()).thenReturn(Arrays.asList(ID_3, ID_4));
+        when(pi2.getValue()).thenReturn(Collections.singletonList(ID_5));
+
+        final Map<String, List<VocabularyProperty>> dataMap = new LinkedHashMap<>();
+        dataMap.put(PROPERTY_1, Collections.emptyList());
+        dataMap.put(PROPERTY_2, Arrays.asList(this.vocabProperty1, this.vocabProperty2));
+        doReturn(new DictionaryPatientData<>(CODE_FIELDS_DATA_NAME, dataMap)).when(this.patient)
+            .getData(CODE_FIELDS_DATA_NAME);
+        this.codeFieldImplComponent.save(this.patient, PatientWritePolicy.MERGE);
+        // Once when save() is called, another time when load() is called.
+        verify(this.doc, times(1)).getXObject(Patient.CLASS_REFERENCE, true, this.xcontext);
+        verify(this.doc, times(1)).getXObject(Patient.CLASS_REFERENCE);
+        verifyNoMoreInteractions(this.doc);
+        verify(this.data, times(1)).set(PROPERTY_1, Arrays.asList(ID_3, ID_4), this.xcontext);
+        verify(this.data, times(1)).set(PROPERTY_2, Arrays.asList(ID_5, ID_1, ID_2), this.xcontext);
+        // When load() is called, there are 2 fields that are loaded.
+        verify(this.data, times(2)).getField(anyString());
+        verifyNoMoreInteractions(this.data);
+    }
+
+    @Test
+    public void saveWithReplacePolicyErasesAllControllerDataAndReplacesItWithProvidedCodeFieldData()
+    {
+        final Map<String, List<VocabularyProperty>> dataMap = new LinkedHashMap<>();
+        dataMap.put(PROPERTY_2, Arrays.asList(this.vocabProperty1, this.vocabProperty2));
+        doReturn(new DictionaryPatientData<>(CODE_FIELDS_DATA_NAME, dataMap)).when(this.patient)
+            .getData(CODE_FIELDS_DATA_NAME);
+        this.codeFieldImplComponent.save(this.patient, PatientWritePolicy.REPLACE);
+        verify(this.doc, times(1)).getXObject(Patient.CLASS_REFERENCE, true, this.xcontext);
+        verifyNoMoreInteractions(this.doc);
+        verify(this.data, times(1)).set(PROPERTY_1, null, this.xcontext);
+        verify(this.data, times(1)).set(PROPERTY_2, Arrays.asList(ID_1, ID_2), this.xcontext);
+        verifyNoMoreInteractions(this.data);
+    }
+
     // -----------------------------------writeJSON() tests-----------------------------------
 
     @Test
@@ -237,7 +447,7 @@ public class AbstractComplexControllerTest
         doReturn(null).when(this.patient).getData(DATA_NAME);
         JSONObject json = new JSONObject();
 
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json);
+        this.component.writeJSON(this.patient, json);
 
         Assert.assertFalse(json.has(DATA_NAME));
     }
@@ -249,7 +459,7 @@ public class AbstractComplexControllerTest
         JSONObject json = new JSONObject();
         Collection<String> selectedFields = new LinkedList<>();
 
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json, selectedFields);
+        this.component.writeJSON(this.patient, json, selectedFields);
 
         Assert.assertFalse(json.has(DATA_NAME));
     }
@@ -261,7 +471,7 @@ public class AbstractComplexControllerTest
         doReturn(patientData).when(this.patient).getData(DATA_NAME);
         JSONObject json = new JSONObject();
 
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json);
+        this.component.writeJSON(this.patient, json);
 
         Assert.assertFalse(json.has(DATA_NAME));
     }
@@ -274,7 +484,7 @@ public class AbstractComplexControllerTest
         JSONObject json = new JSONObject();
         Collection<String> selectedFields = new LinkedList<>();
 
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json, selectedFields);
+        this.component.writeJSON(this.patient, json, selectedFields);
 
         Assert.assertFalse(json.has(DATA_NAME));
     }
@@ -291,7 +501,7 @@ public class AbstractComplexControllerTest
         doReturn(patientData).when(this.patient).getData(DATA_NAME);
         JSONObject json = new JSONObject();
 
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json);
+        this.component.writeJSON(this.patient, json);
 
         Assert.assertNotNull(json.get(DATA_NAME));
         Assert.assertTrue(json.get(DATA_NAME) instanceof JSONObject);
@@ -315,7 +525,7 @@ public class AbstractComplexControllerTest
         selectedFields.add(PROPERTY_1);
         selectedFields.add(PROPERTY_2);
 
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json, selectedFields);
+        this.component.writeJSON(this.patient, json, selectedFields);
 
         Assert.assertNotNull(json.get(DATA_NAME));
         Assert.assertTrue(json.get(DATA_NAME) instanceof JSONObject);
@@ -335,7 +545,7 @@ public class AbstractComplexControllerTest
         doReturn(patientData).when(this.patient).getData(DATA_NAME);
         JSONObject json = new JSONObject();
 
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json);
+        this.component.writeJSON(this.patient, json);
 
         Assert.assertNotNull(json.get(DATA_NAME));
         Assert.assertTrue(json.get(DATA_NAME) instanceof JSONObject);
@@ -358,7 +568,7 @@ public class AbstractComplexControllerTest
         selectedFields.add(PROPERTY_3);
         selectedFields.add(PROPERTY_4);
 
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json, selectedFields);
+        this.component.writeJSON(this.patient, json, selectedFields);
 
         Assert.assertNotNull(json.get(DATA_NAME));
         Assert.assertTrue(json.get(DATA_NAME) instanceof JSONObject);
@@ -381,7 +591,7 @@ public class AbstractComplexControllerTest
         Collection<String> selectedFields = new LinkedList<>();
         selectedFields.add(PROPERTY_1);
 
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json, selectedFields);
+        this.component.writeJSON(this.patient, json, selectedFields);
 
         Assert.assertNotNull(json.get(DATA_NAME));
         Assert.assertTrue(json.get(DATA_NAME) instanceof JSONObject);
@@ -403,7 +613,7 @@ public class AbstractComplexControllerTest
         doReturn(patientData).when(this.patient).getData(DATA_NAME);
         JSONObject json = new JSONObject();
 
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json, null);
+        this.component.writeJSON(this.patient, json, null);
 
         Assert.assertNotNull(json.get(DATA_NAME));
         Assert.assertTrue(json.get(DATA_NAME) instanceof JSONObject);
@@ -426,7 +636,7 @@ public class AbstractComplexControllerTest
         Collection<String> selectedFields = new LinkedList<>();
         selectedFields.add(PROPERTY_1);
 
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json, selectedFields);
+        this.component.writeJSON(this.patient, json, selectedFields);
 
         Assert.assertNotNull(json.get(DATA_NAME));
         Assert.assertTrue(json.get(DATA_NAME) instanceof JSONObject);
@@ -437,7 +647,7 @@ public class AbstractComplexControllerTest
         selectedFields.clear();
         selectedFields.add(PROPERTY_2);
 
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json, selectedFields);
+        this.component.writeJSON(this.patient, json, selectedFields);
 
         Assert.assertNotNull(json.get(DATA_NAME));
         Assert.assertTrue(json.get(DATA_NAME) instanceof JSONObject);
