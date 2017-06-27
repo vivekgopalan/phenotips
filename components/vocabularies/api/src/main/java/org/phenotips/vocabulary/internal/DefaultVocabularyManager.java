@@ -84,41 +84,41 @@ public class DefaultVocabularyManager implements VocabularyManager, Initializabl
     }
 
     /**
-     * Constructs a map of vocabularies, categorised according to their type.
+     * Constructs a map of vocabularies, categorized according to their type.
      *
-     * @return a map where the key is the vocabulary category, and the value is the {@link Set<Vocabulary>} associated
-     *         with that category
+     * @return a map where the key is the vocabulary category, and the value is the collection of {@link Vocabulary
+     *         vocabularies} implementing that category
      */
     private Map<String, Set<Vocabulary>> constructVocabulariesByCategory()
     {
-        final Map<String, Set<Vocabulary>> categorisedVocabularies = new HashMap<>();
+        final Map<String, Set<Vocabulary>> categorizedVocabularies = new HashMap<>();
         for (final Vocabulary vocabulary : this.vocabularies.values()) {
             final Collection<String> supportedCategories = vocabulary.getSupportedCategories();
             for (final String category : supportedCategories) {
-                final Set<Vocabulary> vocabularySet = generateVocabSetForCategory(category, categorisedVocabularies);
+                final Set<Vocabulary> vocabularySet = generateVocabSetForCategory(category, categorizedVocabularies);
                 vocabularySet.add(vocabulary);
             }
         }
-        return Collections.unmodifiableMap(categorisedVocabularies);
+        return Collections.unmodifiableMap(categorizedVocabularies);
     }
 
     /**
-     * Given a {@code category} label, returns a {@link Set<Vocabulary>} that fall under that category, as per the
-     * {@link #vocabulariesByCategory map}. If there are no vocabularies associated with that category yet, then
-     * the category is added to {@link #vocabulariesByCategory} and an empty set is returned.
+     * Given a {@code category} label, returns a set of {@link Vocabulary vocabularies} that fall under that category,
+     * as per the {@link #vocabulariesByCategory map}. If there are no vocabularies associated with that category yet,
+     * then the category is added to {@link #vocabulariesByCategory} and an empty set is returned.
      *
      * @param category the vocabulary category of interest
-     * @param categorisedVocabularies the available vocabularies, stored under their respective categories
-     * @return a {@link Set<Vocabulary>} objects associated with the given {@code category}
+     * @param categorizedVocabularies the available vocabularies, stored under their respective categories
+     * @return a set of vocabulary objects associated with the given {@code category}
      */
     private Set<Vocabulary> generateVocabSetForCategory(@Nonnull final String category,
-        @Nonnull Map<String, Set<Vocabulary>> categorisedVocabularies)
+        @Nonnull Map<String, Set<Vocabulary>> categorizedVocabularies)
     {
-        if (categorisedVocabularies.containsKey(category)) {
-            return categorisedVocabularies.get(category);
+        if (categorizedVocabularies.containsKey(category)) {
+            return categorizedVocabularies.get(category);
         }
         final Set<Vocabulary> vocabularySet = new HashSet<>();
-        categorisedVocabularies.put(category, vocabularySet);
+        categorizedVocabularies.put(category, vocabularySet);
         return vocabularySet;
     }
 
@@ -167,7 +167,7 @@ public class DefaultVocabularyManager implements VocabularyManager, Initializabl
         if (StringUtils.isBlank(input) || StringUtils.isBlank(category)) {
             return Collections.emptyList();
         }
-        // Try to get categorizedVocabularies that belong to the provided category. If none returned, return empty list.
+        // Try to get the vocabularies that belong to the provided category. If none returned, return empty list.
         final Set<Vocabulary> categorizedVocabularies = this.vocabulariesByCategory.get(category);
         if (CollectionUtils.isEmpty(categorizedVocabularies)) {
             this.logger.warn("No vocabularies associated with the specified category: {}", category);

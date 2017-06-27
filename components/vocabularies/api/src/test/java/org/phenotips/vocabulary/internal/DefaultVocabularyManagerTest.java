@@ -92,6 +92,10 @@ public class DefaultVocabularyManagerTest
 
     private static final String MIM_LABEL = "MIM";
 
+    @Rule
+    public final MockitoComponentMockingRule<VocabularyManager> mocker =
+        new MockitoComponentMockingRule<>(DefaultVocabularyManager.class);
+
     private VocabularyManager vocabularyManager;
 
     private Map<String, Vocabulary> vocabularies;
@@ -130,10 +134,6 @@ public class DefaultVocabularyManagerTest
 
     @Mock
     private VocabularyTerm result6;
-
-    @Rule
-    public final MockitoComponentMockingRule<VocabularyManager> mocker =
-        new MockitoComponentMockingRule<VocabularyManager>(DefaultVocabularyManager.class);
 
     @Before
     public void setUp() throws ComponentLookupException, InitializationException, NoSuchFieldException

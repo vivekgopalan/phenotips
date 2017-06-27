@@ -47,7 +47,7 @@ public interface CategoryTermSuggestionsResource
      * will not contain any terms.
      *
      * @param category The name of the vocabulary category to be used for suggestions. If no matching category is found,
-     *        an error is returned to the user
+     *            an error is returned to the user
      * @param input The string which will be used to generate suggestions
      * @param maxResults The maximum number of results to be returned; default is 10
      * @return A {@link VocabularyTerms} object representing a list of {@link VocabularyTerm term} suggestions.
