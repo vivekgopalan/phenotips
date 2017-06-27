@@ -34,7 +34,7 @@ import javax.ws.rs.core.MediaType;
  * Resource for searching in a category for terms matching an input (vocabulary suggest).
  *
  * @version $Id $
- * @since 1.4M1
+ * @since 1.4
  */
 @Path("/vocabularies/categories/{category}/suggest")
 @ParentResource(CategoryResource.class)

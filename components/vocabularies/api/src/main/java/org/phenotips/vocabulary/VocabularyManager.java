@@ -59,6 +59,7 @@ public interface VocabularyManager
      *
      * @param category the vocabulary category, e.g. "phenotype"
      * @return a set of {@link Vocabulary} objects that fall under the {@code category}
+     * @since 1.4
      */
     Set<Vocabulary> getVocabularies(String category);
 
@@ -74,6 +75,7 @@ public interface VocabularyManager
      * Retrieves a list of category names that are available for use with {@link #getVocabularies(String)}.
      *
      * @return a list of available categories
+     * @since 1.4
      */
     List<String> getAvailableCategories();
 

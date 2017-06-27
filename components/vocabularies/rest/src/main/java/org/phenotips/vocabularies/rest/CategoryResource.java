@@ -34,7 +34,7 @@ import javax.ws.rs.core.MediaType;
  * {@link org.phenotips.vocabulary.Vocabulary} objects.
  *
  * @version $Id $
- * @since 1.4M1
+ * @since 1.4
  */
 @Unstable("New API introduced in 1.4")
 @Path("/vocabularies/categories/{category}")

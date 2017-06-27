@@ -117,7 +117,7 @@ public interface Vocabulary
      *            that depends on the actual engine that stores the vocabulary; some vocabularies may not support a
      *            filter query; may be {@code null}
      * @return a list of suggestions, possibly empty.
-     * @since 1.1-rc-1
+     * @since 1.4
      */
     List<VocabularyTerm> search(String input, String category, int maxResults, String sort, String customFilter);
 
@@ -190,6 +190,7 @@ public interface Vocabulary
      *
      * @return a collection of vocabulary term categories, as short names, for example {@code disorder},
      *         {@code feature}, or {@code feature-qualifier}; may be empty
+     * @since 1.4
      */
     Collection<String> getSupportedCategories();
 
