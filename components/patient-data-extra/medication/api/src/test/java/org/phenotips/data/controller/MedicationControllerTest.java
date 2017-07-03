@@ -24,11 +24,12 @@ import org.phenotips.data.MedicationEffect;
 import org.phenotips.data.Patient;
 import org.phenotips.data.PatientData;
 import org.phenotips.data.PatientDataController;
+import org.phenotips.data.PatientWritePolicy;
 import org.phenotips.data.internal.controller.MedicationController;
-import org.xwiki.component.manager.ComponentLookupException;
 import org.xwiki.model.reference.DocumentReference;
 import org.xwiki.test.mockito.MockitoComponentMockingRule;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -44,7 +45,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import com.xpn.xwiki.XWiki;
@@ -59,6 +59,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -71,7 +73,7 @@ public class MedicationControllerTest
 {
     @Rule
     public final MockitoComponentMockingRule<PatientDataController<Medication>> mocker =
-        new MockitoComponentMockingRule<PatientDataController<Medication>>(MedicationController.class);
+        new MockitoComponentMockingRule<>(MedicationController.class);
 
     @Mock
     private Patient patient;
@@ -92,11 +94,16 @@ public class MedicationControllerTest
 
     @Mock
     private BaseObject obj2;
+    
+    private PatientDataController<Medication> component;
 
     @Before
     public void setup() throws Exception
     {
         MockitoAnnotations.initMocks(this);
+        
+        this.component = this.mocker.getComponentUnderTest();
+        
         when(this.patient.getDocumentReference()).thenReturn(this.docRef);
         when(this.patient.getXDocument()).thenReturn(this.doc);
 
@@ -115,14 +122,14 @@ public class MedicationControllerTest
     }
 
     @Test
-    public void loadReadsObjects() throws ComponentLookupException
+    public void loadReadsObjects()
     {
         List<BaseObject> objects = new LinkedList<>();
         objects.add(this.obj1);
         objects.add(null);
         objects.add(this.obj2);
         when(this.doc.getXObjects(Medication.CLASS_REFERENCE)).thenReturn(objects);
-        PatientData<Medication> result = this.mocker.getComponentUnderTest().load(this.patient);
+        PatientData<Medication> result = this.component.load(this.patient);
         Assert.assertEquals(2, result.size());
 
         Medication m = result.get(0);
@@ -148,32 +155,32 @@ public class MedicationControllerTest
     }
 
     @Test
-    public void loadWithNoObjectsReturnsNull() throws ComponentLookupException
+    public void loadWithNoObjectsReturnsNull()
     {
-        when(this.doc.getXObjects(Medication.CLASS_REFERENCE)).thenReturn(Collections.<BaseObject>emptyList());
-        Assert.assertNull(this.mocker.getComponentUnderTest().load(this.patient));
+        when(this.doc.getXObjects(Medication.CLASS_REFERENCE)).thenReturn(Collections.emptyList());
+        Assert.assertNull(this.component.load(this.patient));
 
         when(this.doc.getXObjects(Medication.CLASS_REFERENCE)).thenReturn(null);
-        Assert.assertNull(this.mocker.getComponentUnderTest().load(this.patient));
+        Assert.assertNull(this.component.load(this.patient));
     }
 
     @Test
-    public void loadWithNullObjectsReturnsNull() throws ComponentLookupException
+    public void loadWithNullObjectsReturnsNull()
     {
         List<BaseObject> objects = new LinkedList<>();
         objects.add(null);
         when(this.doc.getXObjects(Medication.CLASS_REFERENCE)).thenReturn(objects);
-        Assert.assertNull(this.mocker.getComponentUnderTest().load(this.patient));
+        Assert.assertNull(this.component.load(this.patient));
     }
 
     @Test
-    public void loadIgnoresUnknownEffect() throws ComponentLookupException
+    public void loadIgnoresUnknownEffect()
     {
         List<BaseObject> objects = new LinkedList<>();
         objects.add(this.obj1);
         when(this.obj1.getStringValue("effect")).thenReturn("invalid");
         when(this.doc.getXObjects(Medication.CLASS_REFERENCE)).thenReturn(objects);
-        PatientData<Medication> result = this.mocker.getComponentUnderTest().load(this.patient);
+        PatientData<Medication> result = this.component.load(this.patient);
         Assert.assertEquals(1, result.size());
 
         Medication m = result.get(0);
@@ -190,51 +197,91 @@ public class MedicationControllerTest
     }
 
     @Test
-    public void loadWithExceptionReturnsNull() throws Exception
+    public void loadWithExceptionReturnsNull()
     {
         when(this.patient.getXDocument()).thenThrow(new RuntimeException());
-        Assert.assertNull(this.mocker.getComponentUnderTest().load(this.patient));
+        Assert.assertNull(this.component.load(this.patient));
     }
 
     @Test
-    public void saveWithNoDataDoesNothing() throws Exception
+    public void saveWithNoDataDoesNothingWhenPolicyIsUpdate()
     {
         when(this.patient.getData(MedicationController.DATA_NAME)).thenReturn(null);
-        this.mocker.getComponentUnderTest().save(this.patient);
-        Mockito.verifyZeroInteractions(this.doc);
+        this.component.save(this.patient, PatientWritePolicy.UPDATE);
+        verifyZeroInteractions(this.doc);
     }
+    
+    @Test
+    public void saveWithNoDataDoesNothingWhenPolicyIsMerge()
+    {
+        when(this.patient.getData(MedicationController.DATA_NAME)).thenReturn(null);
+        this.component.save(this.patient, PatientWritePolicy.MERGE);
+        verifyZeroInteractions(this.doc);
+    }
+    
+    @Test
+    public void saveWithNoDataNullsAllFieldsWhenPolicyIsReplace()
+    {
+        when(this.patient.getData(MedicationController.DATA_NAME)).thenReturn(null);
+        this.component.save(this.patient, PatientWritePolicy.REPLACE);
+        
+        verify(this.doc, times(1)).removeXObjects(Medication.CLASS_REFERENCE);
+        verifyNoMoreInteractions(this.doc);
+    }    
 
     @Test
-    public void saveWithNonIndexedDataDoesNothing() throws Exception
+    public void saveWithNonIndexedDataDoesNothing()
     {
         when(this.patient.<Medication>getData(MedicationController.DATA_NAME)).thenReturn(
-            new DictionaryPatientData<>(MedicationController.DATA_NAME, Collections.<String, Medication>emptyMap()));
-        this.mocker.getComponentUnderTest().save(this.patient);
-        Mockito.verifyZeroInteractions(this.doc);
+            new DictionaryPatientData<>(MedicationController.DATA_NAME, Collections.emptyMap()));
+        this.component.save(this.patient);
+        verifyZeroInteractions(this.doc);
     }
 
     @Test
-    public void saveWithEmptyDataClearsXObjects() throws Exception
+    public void saveWithEmptyDataClearsXObjectsWithUpdatePolicy()
     {
         when(this.patient.getData(MedicationController.DATA_NAME))
             .thenReturn(new IndexedPatientData<>(MedicationController.DATA_NAME, Collections.emptyList()));
-        this.mocker.getComponentUnderTest().save(this.patient);
-        Mockito.verify(this.doc).removeXObjects(Medication.CLASS_REFERENCE);
-        Mockito.verifyNoMoreInteractions(this.doc);
+        this.component.save(this.patient);
+        verify(this.doc, times(1)).removeXObjects(Medication.CLASS_REFERENCE);
+        verifyNoMoreInteractions(this.doc);
     }
 
     @Test
-    public void saveHandlesExceptions() throws Exception
+    public void saveWithEmptyDataSavesOldDataXObjectsWithMergePolicy()
+    {
+        when(this.patient.getData(MedicationController.DATA_NAME))
+            .thenReturn(new IndexedPatientData<>(MedicationController.DATA_NAME, Collections.emptyList()));
+        this.component.save(this.patient, PatientWritePolicy.MERGE);
+        verify(this.doc, times(1)).removeXObjects(Medication.CLASS_REFERENCE);
+        verify(this.doc, times(1)).getXObjects(Medication.CLASS_REFERENCE);
+        verifyNoMoreInteractions(this.doc);
+    }
+
+
+    @Test
+    public void saveWithEmptyDataClearsXObjectsWithReplacePolicy()
+    {
+        when(this.patient.getData(MedicationController.DATA_NAME))
+            .thenReturn(new IndexedPatientData<>(MedicationController.DATA_NAME, Collections.emptyList()));
+        this.component.save(this.patient, PatientWritePolicy.REPLACE);
+        verify(this.doc).removeXObjects(Medication.CLASS_REFERENCE);
+        verifyNoMoreInteractions(this.doc);
+    }
+
+    @Test
+    public void saveHandlesExceptions() throws XWikiException
     {
         setupSampleData();
         when(this.doc.newXObject(eq(Medication.CLASS_REFERENCE), any(XWikiContext.class)))
             .thenThrow(new XWikiException());
-        this.mocker.getComponentUnderTest().save(this.patient);
-        Mockito.verify(this.doc).removeXObjects(Medication.CLASS_REFERENCE);
+        this.component.save(this.patient);
+        verify(this.doc).removeXObjects(Medication.CLASS_REFERENCE);
     }
 
     @Test
-    public void saveUpdatesXObjects() throws Exception
+    public void saveUpdatesXObjectsWithUpdatePolicy() throws XWikiException
     {
         setupSampleData();
         BaseObject obj1 = mock(BaseObject.class);
@@ -242,9 +289,10 @@ public class MedicationControllerTest
         when(this.doc.newXObject(eq(Medication.CLASS_REFERENCE), any(XWikiContext.class)))
             .thenReturn(obj1, obj2);
 
-        this.mocker.getComponentUnderTest().save(this.patient);
+        this.component.save(this.patient, PatientWritePolicy.UPDATE);
 
         verify(this.doc, times(1)).removeXObjects(Medication.CLASS_REFERENCE);
+        verify(this.doc, times(2)).newXObject(eq(Medication.CLASS_REFERENCE), any(XWikiContext.class));
 
         verify(obj1).setStringValue(Medication.NAME, "n");
         verify(obj1).setStringValue(Medication.GENERIC_NAME, "gn");
@@ -263,62 +311,179 @@ public class MedicationControllerTest
         verify(obj2, never()).setIntValue(eq(MedicationController.DURATION_YEARS), any(Integer.class));
         verify(obj2, never()).setStringValue(Medication.EFFECT, null);
         verify(obj2).setLargeStringValue(Medication.NOTES, "note2");
+
+        verifyNoMoreInteractions(this.doc, obj1, obj2);
     }
 
     @Test
-    public void writeRespectsSelectedFields() throws Exception
+    public void saveUpdatesXObjectsWithMergePolicy() throws XWikiException
+    {
+        setupSampleDataWithNullNames();
+        BaseObject obj1 = mock(BaseObject.class);
+        BaseObject obj2 = mock(BaseObject.class);
+        BaseObject obj3 = mock(BaseObject.class);
+        BaseObject obj4 = mock(BaseObject.class);
+        BaseObject obj5 = mock(BaseObject.class);
+        when(this.doc.newXObject(eq(Medication.CLASS_REFERENCE), any(XWikiContext.class)))
+            .thenReturn(obj4, obj3, obj1, obj2);
+        when(this.doc.getXObjects(Medication.CLASS_REFERENCE)).thenReturn(Arrays.asList(obj4, obj5));
+        when(obj4.getIntValue("durationYears")).thenReturn(0);
+        when(obj4.getIntValue("durationMonths")).thenReturn(3);
+        when(obj4.getStringValue(Medication.GENERIC_NAME)).thenReturn("gn");
+        when(obj5.getIntValue("durationYears")).thenReturn(0);
+        when(obj5.getIntValue("durationMonths")).thenReturn(3);
+        when(obj5.getStringValue(Medication.NAME)).thenReturn("n");
+
+        this.component.save(this.patient, PatientWritePolicy.MERGE);
+
+        verify(this.doc, times(1)).removeXObjects(Medication.CLASS_REFERENCE);
+        verify(this.doc, times(1)).getXObjects(Medication.CLASS_REFERENCE);
+        verify(this.doc, times(4)).newXObject(eq(Medication.CLASS_REFERENCE), any(XWikiContext.class));
+
+        verify(obj1).setStringValue(Medication.NAME, "n");
+        verify(obj1).setStringValue(Medication.GENERIC_NAME, "gn");
+        verify(obj1).setStringValue(Medication.DOSE, "d");
+        verify(obj1).setStringValue(Medication.FREQUENCY, "f");
+        verify(obj1).setIntValue(MedicationController.DURATION_MONTHS, 4);
+        verify(obj1).setIntValue(MedicationController.DURATION_YEARS, 2);
+        verify(obj1).setStringValue(Medication.EFFECT, "none");
+        verify(obj1).setLargeStringValue(Medication.NOTES, "note");
+
+        verify(obj2).setStringValue(Medication.NAME, "n2");
+        verify(obj2).setStringValue(Medication.GENERIC_NAME, null);
+        verify(obj2).setStringValue(Medication.DOSE, "");
+        verify(obj2).setStringValue(Medication.FREQUENCY, null);
+        verify(obj2, never()).setIntValue(eq(MedicationController.DURATION_MONTHS), any(Integer.class));
+        verify(obj2, never()).setIntValue(eq(MedicationController.DURATION_YEARS), any(Integer.class));
+        verify(obj2, never()).setStringValue(Medication.EFFECT, null);
+        verify(obj2).setLargeStringValue(Medication.NOTES, "note2");
+
+        verify(obj3, times(1)).setStringValue(Medication.NAME, null);
+        verify(obj3, times(1)).setStringValue(Medication.GENERIC_NAME, "gn2");
+        verify(obj3, times(1)).setStringValue(Medication.DOSE, "");
+        verify(obj3, times(1)).setStringValue(Medication.FREQUENCY, null);
+        verify(obj3, never()).setIntValue(eq(MedicationController.DURATION_MONTHS), any(Integer.class));
+        verify(obj3, never()).setIntValue(eq(MedicationController.DURATION_YEARS), any(Integer.class));
+        verify(obj3, never()).setStringValue(Medication.EFFECT, null);
+        verify(obj3, times(1)).setLargeStringValue(Medication.NOTES, "note3");
+
+        verify(obj4, times(1)).setStringValue(Medication.NAME, null);
+        verify(obj4, times(1)).setStringValue(Medication.GENERIC_NAME, "gn");
+        verify(obj4, times(1)).setStringValue(Medication.DOSE, null);
+        verify(obj4, times(1)).setStringValue(Medication.FREQUENCY, null);
+        verify(obj4, times(1)).setIntValue(MedicationController.DURATION_MONTHS, 3);
+        verify(obj4, times(1)).setIntValue(MedicationController.DURATION_YEARS, 0);
+        verify(obj4, times(1)).setLargeStringValue(Medication.NOTES, null);
+        verify(obj4, never()).setStringValue(Medication.EFFECT, null);
+        verify(obj4, times(1)).getIntValue(MedicationController.DURATION_YEARS);
+        verify(obj4, times(1)).getIntValue(MedicationController.DURATION_MONTHS);
+        verify(obj4, times(1)).getStringValue(Medication.NAME);
+        verify(obj4, times(1)).getStringValue(Medication.GENERIC_NAME);
+        verify(obj4, times(1)).getStringValue(Medication.DOSE);
+        verify(obj4, times(1)).getStringValue(Medication.FREQUENCY);
+        verify(obj4, times(1)).getStringValue(Medication.EFFECT);
+        verify(obj4, times(1)).getLargeStringValue(Medication.NOTES);
+
+        verify(obj5, times(1)).getIntValue(MedicationController.DURATION_YEARS);
+        verify(obj5, times(1)).getIntValue(MedicationController.DURATION_MONTHS);
+        verify(obj5, times(1)).getStringValue(Medication.NAME);
+        verify(obj5, times(1)).getStringValue(Medication.GENERIC_NAME);
+        verify(obj5, times(1)).getStringValue(Medication.DOSE);
+        verify(obj5, times(1)).getStringValue(Medication.FREQUENCY);
+        verify(obj5, times(1)).getStringValue(Medication.EFFECT);
+        verify(obj5, times(1)).getLargeStringValue(Medication.NOTES);
+        verifyNoMoreInteractions(this.doc, obj1, obj2, obj3, obj4, obj5);
+    }
+
+    @Test
+    public void saveUpdatesXObjectsWithReplacePolicy() throws XWikiException
+    {
+        setupSampleData();
+        BaseObject obj1 = mock(BaseObject.class);
+        BaseObject obj2 = mock(BaseObject.class);
+        when(this.doc.newXObject(eq(Medication.CLASS_REFERENCE), any(XWikiContext.class)))
+            .thenReturn(obj1, obj2);
+
+        this.component.save(this.patient, PatientWritePolicy.REPLACE);
+
+        verify(this.doc, times(1)).removeXObjects(Medication.CLASS_REFERENCE);
+        verify(this.doc, times(2)).newXObject(eq(Medication.CLASS_REFERENCE), any(XWikiContext.class));
+
+        verify(obj1).setStringValue(Medication.NAME, "n");
+        verify(obj1).setStringValue(Medication.GENERIC_NAME, "gn");
+        verify(obj1).setStringValue(Medication.DOSE, "d");
+        verify(obj1).setStringValue(Medication.FREQUENCY, "f");
+        verify(obj1).setIntValue(MedicationController.DURATION_MONTHS, 4);
+        verify(obj1).setIntValue(MedicationController.DURATION_YEARS, 2);
+        verify(obj1).setStringValue(Medication.EFFECT, "none");
+        verify(obj1).setLargeStringValue(Medication.NOTES, "note");
+
+        verify(obj2).setStringValue(Medication.NAME, "n2");
+        verify(obj2).setStringValue(Medication.GENERIC_NAME, null);
+        verify(obj2).setStringValue(Medication.DOSE, "");
+        verify(obj2).setStringValue(Medication.FREQUENCY, null);
+        verify(obj2, never()).setIntValue(eq(MedicationController.DURATION_MONTHS), any(Integer.class));
+        verify(obj2, never()).setIntValue(eq(MedicationController.DURATION_YEARS), any(Integer.class));
+        verify(obj2, never()).setStringValue(Medication.EFFECT, null);
+        verify(obj2).setLargeStringValue(Medication.NOTES, "note2");
+
+        verifyNoMoreInteractions(this.doc, obj1, obj2);
+    }
+
+    @Test
+    public void writeRespectsSelectedFields()
     {
         setupSampleData();
         JSONObject json = new JSONObject();
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json, Collections.singleton("nothing"));
+        this.component.writeJSON(this.patient, json, Collections.singleton("nothing"));
         Assert.assertEquals(0, json.length());
     }
 
     @Test
-    public void writeWithNoDataDoesNothing() throws Exception
+    public void writeWithNoDataDoesNothing()
     {
         when(this.patient.getData(MedicationController.DATA_NAME)).thenReturn(null);
         JSONObject json = new JSONObject();
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json);
+        this.component.writeJSON(this.patient, json);
         Assert.assertEquals(0, json.length());
     }
 
     @Test
-    public void writeWithNonIndexedDataDoesNothing() throws Exception
+    public void writeWithNonIndexedDataDoesNothing()
     {
         when(this.patient.<Medication>getData(MedicationController.DATA_NAME)).thenReturn(
-            new DictionaryPatientData<>(MedicationController.DATA_NAME, Collections.<String, Medication>emptyMap()));
+            new DictionaryPatientData<>(MedicationController.DATA_NAME, Collections.emptyMap()));
         JSONObject json = new JSONObject();
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json);
+        this.component.writeJSON(this.patient, json);
         Assert.assertEquals(0, json.length());
     }
 
     @Test
-    public void writeWithEmptyDataDoesNothing() throws Exception
+    public void writeWithEmptyDataDoesNothing()
     {
         when(this.patient.getData(MedicationController.DATA_NAME))
             .thenReturn(new IndexedPatientData<>(MedicationController.DATA_NAME, Collections.emptyList()));
         JSONObject json = new JSONObject();
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json);
+        this.component.writeJSON(this.patient, json);
         Assert.assertEquals(0, json.length());
     }
 
     @Test
-    public void writeWithGarbageDataDoesNothing() throws Exception
+    public void writeWithGarbageDataDoesNothing()
     {
         when(this.patient.<Medication>getData(MedicationController.DATA_NAME)).thenReturn(
-            new IndexedPatientData<>(MedicationController.DATA_NAME, Collections.<Medication>singletonList(null)));
+            new IndexedPatientData<>(MedicationController.DATA_NAME, Collections.singletonList(null)));
         JSONObject json = new JSONObject();
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json);
+        this.component.writeJSON(this.patient, json);
         Assert.assertEquals(0, json.length());
     }
 
     @Test
-    public void writeFillsInData() throws Exception
+    public void writeFillsInData()
     {
         setupSampleData();
         JSONObject json = new JSONObject();
-        this.mocker.getComponentUnderTest().writeJSON(this.patient, json,
+        this.component.writeJSON(this.patient, json,
             Collections.singleton(MedicationController.DATA_NAME));
         JSONArray output = json.getJSONArray(MedicationController.DATA_NAME);
         Assert.assertEquals(2, output.length());
@@ -343,45 +508,45 @@ public class MedicationControllerTest
     }
 
     @Test
-    public void readWithNullDataDoesNothing() throws Exception
+    public void readWithNullDataDoesNothing()
     {
-        PatientData<Medication> result = this.mocker.getComponentUnderTest().readJSON(null);
+        PatientData<Medication> result = this.component.readJSON(null);
         Assert.assertNull(result);
     }
 
     @Test
-    public void readWithNoDataDoesNothing() throws Exception
+    public void readWithNoDataDoesNothing()
     {
         JSONObject json = new JSONObject();
-        PatientData<Medication> result = this.mocker.getComponentUnderTest().readJSON(json);
+        PatientData<Medication> result = this.component.readJSON(json);
         Assert.assertNull(result);
     }
 
     @Test
-    public void readWithEmptyDataDoesNothing() throws Exception
+    public void readWithEmptyDataDoesNothing()
     {
         JSONObject json = new JSONObject();
         json.put(MedicationController.DATA_NAME, new JSONArray());
-        PatientData<Medication> result = this.mocker.getComponentUnderTest().readJSON(json);
+        PatientData<Medication> result = this.component.readJSON(json);
         Assert.assertNull(result);
     }
 
     @Test
-    public void readWithGarbageDataDoesNothing() throws Exception
+    public void readWithGarbageDataDoesNothing()
     {
         JSONObject json = new JSONObject();
         JSONObject data = new JSONObject();
         data.put("nothing", "here");
         json.put(MedicationController.DATA_NAME, data);
-        PatientData<Medication> result = this.mocker.getComponentUnderTest().readJSON(json);
+        PatientData<Medication> result = this.component.readJSON(json);
         Assert.assertNull(result);
     }
 
     @Test
-    public void readRecoversData() throws Exception
+    public void readRecoversData()
     {
         JSONObject json = setupSampleJSON();
-        PatientData<Medication> result = this.mocker.getComponentUnderTest().readJSON(json);
+        PatientData<Medication> result = this.component.readJSON(json);
         Assert.assertEquals(2, result.size());
 
         Medication m = result.get(0);
@@ -407,9 +572,9 @@ public class MedicationControllerTest
     }
 
     @Test
-    public void getName() throws Exception
+    public void getName()
     {
-        Assert.assertEquals("medication", this.mocker.getComponentUnderTest().getName());
+        Assert.assertEquals("medication", this.component.getName());
     }
 
     private void setupSampleData()
@@ -422,6 +587,23 @@ public class MedicationControllerTest
         input.add(m);
         input.add(null);
         m = new Medication("n2", null, "", null, null, null, "note2");
+        input.add(m);
+        when(this.patient.<Medication>getData(MedicationController.DATA_NAME))
+            .thenReturn(new IndexedPatientData<>(MedicationController.DATA_NAME, input));
+    }
+
+    private void setupSampleDataWithNullNames()
+    {
+        List<Medication> input = new LinkedList<>();
+        MutablePeriod p = new MutablePeriod();
+        p.setMonths(4);
+        p.setYears(2);
+        Medication m = new Medication("n", "gn", "d", "f", p.toPeriod(), "none", "note");
+        input.add(m);
+        input.add(null);
+        m = new Medication("n2", null, "", null, null, null, "note2");
+        input.add(m);
+        m = new Medication(null, "gn2", "", null, null, null, "note3");
         input.add(m);
         when(this.patient.<Medication>getData(MedicationController.DATA_NAME))
             .thenReturn(new IndexedPatientData<>(MedicationController.DATA_NAME, input));
