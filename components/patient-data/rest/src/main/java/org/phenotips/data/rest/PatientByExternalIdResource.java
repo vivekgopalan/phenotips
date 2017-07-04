@@ -23,11 +23,13 @@ import org.phenotips.rest.RequiredAccess;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -62,16 +64,18 @@ public interface PatientByExternalIdResource
      * is returned. If the indicated patient record doesn't exist, and a valid JSON is provided, a new patient record
      * is created with the provided data. If multiple records exist with the same given identifier, no change is
      * performed, and a list of links to each such record is returned. If a field is set in the patient record, but
-     * missing in the JSON, then that field is not changed.
+     * missing in the JSON, then that field is not changed, unless the "replace" policy is selected.
      *
      * @param json the JSON representation of the new patient to add
      * @param eid the patient's given "external" identifier, see {@link org.phenotips.data.Patient#getExternalId()}
+     * * @param policy the policy according to which the patient should be updated
      * @return a status message
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @RequiredAccess("edit")
-    Response updatePatient(String json, @PathParam("eid") String eid);
+    Response updatePatient(String json, @PathParam("eid") String eid,
+        @QueryParam("policy") @DefaultValue("update") String policy);
 
     /**
      * Delete a patient record, identified by its given "external" identifier. If the indicated patient record doesn't
