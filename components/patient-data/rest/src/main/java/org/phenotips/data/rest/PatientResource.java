@@ -17,19 +17,18 @@
  */
 package org.phenotips.data.rest;
 
+import org.phenotips.rest.PATCH;
 import org.phenotips.rest.ParentResource;
 import org.phenotips.rest.Relation;
 import org.phenotips.rest.RequiredAccess;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -61,18 +60,32 @@ public interface PatientResource
      * Update a patient record, identified by its internal PhenoTips identifier, from its JSON representation. If the
      * indicated patient record doesn't exist, or if the user sending the request doesn't have the right to edit the
      * target patient record, no change is performed and an error is returned. If a field is set in the patient record,
-     * but missing in the JSON, then that field is not changed, unless the "replace" policy is selected.
+     * but missing in the JSON, then that field is not changed.
      *
      * @param json the JSON representation of the new patient to add
      * @param id the patient's internal identifier, see {@link org.phenotips.data.Patient#getId()}
-     * @param policy the policy according to which the patient should be updated
      * @return a status message
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @RequiredAccess("edit")
-    Response updatePatient(String json, @PathParam("patient-id") String id,
-        @QueryParam("policy") @DefaultValue("update") String policy);
+    Response updatePatient(String json, @PathParam("patient-id") String id);
+
+    /**
+     * Update a patient record, identified by its internal PhenoTips identifier, from its JSON representation. Existing
+     * patient data is merged with the provided JSON representation, if possible. If the indicated patient record
+     * doesn't exist, or if the user sending the request doesn't have the right to edit the target patient record, no
+     * change is performed and an error is returned. If a field is set in the patient record, but missing in the JSON,
+     * then that field is not changed.
+     *
+     * @param json the JSON representation of the new patient
+     * @param id the patient's internal identifier, see {@link org.phenotips.data.Patient#getId()}
+     * @return a status message
+     */
+    @PATCH
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RequiredAccess("edit")
+    Response patchPatient(String json, @PathParam("patient-id") String id);
 
     /**
      * Delete a patient record, identified by its internal PhenoTips identifier. If the indicated patient record doesn't

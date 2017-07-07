@@ -17,19 +17,18 @@
  */
 package org.phenotips.data.rest;
 
+import org.phenotips.rest.PATCH;
 import org.phenotips.rest.ParentResource;
 import org.phenotips.rest.Relation;
 import org.phenotips.rest.RequiredAccess;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -64,18 +63,34 @@ public interface PatientByExternalIdResource
      * is returned. If the indicated patient record doesn't exist, and a valid JSON is provided, a new patient record
      * is created with the provided data. If multiple records exist with the same given identifier, no change is
      * performed, and a list of links to each such record is returned. If a field is set in the patient record, but
-     * missing in the JSON, then that field is not changed, unless the "replace" policy is selected.
+     * missing in the JSON, then that field is not changed.
      *
      * @param json the JSON representation of the new patient to add
      * @param eid the patient's given "external" identifier, see {@link org.phenotips.data.Patient#getExternalId()}
-     * * @param policy the policy according to which the patient should be updated
      * @return a status message
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @RequiredAccess("edit")
-    Response updatePatient(String json, @PathParam("eid") String eid,
-        @QueryParam("policy") @DefaultValue("update") String policy);
+    Response updatePatient(String json, @PathParam("eid") String eid);
+
+    /**
+     * Update a patient record, identified by its given "external" identifier, from its JSON representation. Existing
+     * patient data is merged with the provided JSON representation, if possible. If the user sending the request
+     * doesn't have the right to edit the target patient record, no change is performed and an error is returned. If the
+     * indicated patient record doesn't exist, and a valid JSON is provided, a new patient record is created with the
+     * provided data. If multiple records exist with the same given identifier, no change is performed, and a list of
+     * links to each such record is returned. If a field is set in the patient record, but missing in the JSON, then
+     * that field is not changed.
+     *
+     * @param json the JSON representation of the new patient to add
+     * @param eid the patient's given "external" identifier, see {@link org.phenotips.data.Patient#getExternalId()}
+     * @return a status message
+     */
+    @PATCH
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RequiredAccess("edit")
+    Response patchPatient(String json, @PathParam("eid") String eid);
 
     /**
      * Delete a patient record, identified by its given "external" identifier. If the indicated patient record doesn't

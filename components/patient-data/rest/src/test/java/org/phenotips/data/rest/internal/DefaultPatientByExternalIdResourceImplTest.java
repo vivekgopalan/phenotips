@@ -47,6 +47,7 @@ import org.xwiki.users.UserManager;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -56,8 +57,10 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriBuilder;
 import javax.ws.rs.core.UriInfo;
 
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -89,11 +92,19 @@ import static org.mockito.Mockito.when;
 
 public class DefaultPatientByExternalIdResourceImplTest
 {
-    private static final String UPDATE = "update";
+    private static final String EID = "eid";
+
+    private static final String ID = "id";
+
+    private static final String PATIENT_ID = "P0000001";
+
+    private static final String EMPTY_JSON = "{}";
+
+    private static final String EXTERNAL_ID = "external_id";
 
     @Rule
     public final MockitoComponentMockingRule<PatientByExternalIdResource> mocker =
-        new MockitoComponentMockingRule<PatientByExternalIdResource>(DefaultPatientByExternalIdResourceImpl.class);
+        new MockitoComponentMockingRule<>(DefaultPatientByExternalIdResourceImpl.class);
 
     @Mock
     private Patient patient;
@@ -120,21 +131,15 @@ public class DefaultPatientByExternalIdResourceImplTest
 
     private AuthorizationManager access;
 
-    private UserManager users;
-
     private URI uri;
 
     private XWikiContext context;
 
     private DefaultPatientByExternalIdResourceImpl component;
 
-    private final String eid = "eid";
-
-    private final String id = "id";
-
     private DocumentReference userReference = new DocumentReference("wiki", "XWiki", "padams");
 
-    private DocumentReference patientReference = new DocumentReference("wiki", "data", "P0000001");
+    private DocumentReference patientReference = new DocumentReference("wiki", "data", PATIENT_ID);
 
     @Before
     public void setUp() throws ComponentLookupException, URISyntaxException
@@ -153,7 +158,8 @@ public class DefaultPatientByExternalIdResourceImplTest
         this.factory = this.mocker.getInstance(DomainObjectFactory.class);
         this.qm = this.mocker.getInstance(QueryManager.class);
         this.access = this.mocker.getInstance(AuthorizationManager.class);
-        this.users = this.mocker.getInstance(UserManager.class);
+
+        final UserManager users = this.mocker.getInstance(UserManager.class);
         this.component = (DefaultPatientByExternalIdResourceImpl) this.mocker.getComponentUnderTest();
         this.logger = this.mocker.getMockedLogger();
         this.resolver = this.mocker.getInstance(EntityReferenceResolver.TYPE_REFERENCE, "current");
@@ -164,11 +170,11 @@ public class DefaultPatientByExternalIdResourceImplTest
         when(this.resolver.resolve(any(EntityReference.class), any(EntityType.class), any()))
             .thenReturn(mock(EntityReference.class));
         doReturn(this.uriBuilder).when(this.uriInfo).getBaseUriBuilder();
-        when(this.patient.getId()).thenReturn(this.id);
+        when(this.patient.getId()).thenReturn(ID);
         when(this.patient.getDocumentReference()).thenReturn(this.patientReference);
-        when(this.users.getCurrentUser()).thenReturn(this.user);
+        when(users.getCurrentUser()).thenReturn(this.user);
         when(this.user.getProfileDocument()).thenReturn(this.userReference);
-        when(this.repository.getByName(this.eid)).thenReturn(this.patient);
+        when(this.repository.getByName(EID)).thenReturn(this.patient);
         when(this.repository.create()).thenReturn(this.patient);
         when(this.access.hasAccess(Right.VIEW, this.userReference, this.patientReference)).thenReturn(true);
         when(this.access.hasAccess(Right.EDIT, this.userReference, this.patientReference)).thenReturn(true);
@@ -191,7 +197,7 @@ public class DefaultPatientByExternalIdResourceImplTest
     {
         when(this.access.hasAccess(Right.VIEW, this.userReference, this.patientReference)).thenReturn(false);
 
-        Response response = this.component.getPatient(this.eid);
+        Response response = this.component.getPatient(EID);
         verify(this.logger).debug("View access denied to user [{}] on patient record [{}]", this.user,
             this.patient.getId());
 
@@ -207,8 +213,8 @@ public class DefaultPatientByExternalIdResourceImplTest
         when(this.uriBuilder.path(PatientResource.class)).thenReturn(this.uriBuilder);
         when(this.uriBuilder.build(this.patient.getId())).thenReturn(this.uri);
 
-        Response response = this.component.getPatient(this.eid);
-        verify(this.logger).debug("Retrieving patient record with external ID [{}] via REST", this.eid);
+        Response response = this.component.getPatient(EID);
+        verify(this.logger).debug("Retrieving patient record with external ID [{}] via REST", EID);
 
         JSONObject links = new JSONObject().accumulate("rel", "self").accumulate("href", "uri")
             .put("allowedMethods", new JSONArray(Collections.singletonList("GET")));
@@ -222,12 +228,12 @@ public class DefaultPatientByExternalIdResourceImplTest
     public void getPatientNotFoundChecksForMultipleRecords() throws ComponentLookupException, QueryException
     {
         Query query = mock(DefaultQuery.class);
-        when(this.repository.getByName(this.eid)).thenReturn(null);
+        when(this.repository.getByName(EID)).thenReturn(null);
         when(this.qm.createQuery(Matchers.anyString(), Matchers.anyString())).thenReturn(query);
         when(query.execute()).thenReturn(new ArrayList<>());
 
-        Response response = this.component.getPatient(this.eid);
-        verify(this.logger).debug("No patient record with external ID [{}] exists yet", this.eid);
+        Response response = this.component.getPatient(EID);
+        verify(this.logger).debug("No patient record with external ID [{}] exists yet", EID);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
     }
 
@@ -235,13 +241,13 @@ public class DefaultPatientByExternalIdResourceImplTest
     public void updatePatientNotFoundChecksForMultipleRecords() throws ComponentLookupException, QueryException
     {
         Query query = mock(DefaultQuery.class);
-        when(this.repository.getByName(this.eid)).thenReturn(null);
+        when(this.repository.getByName(EID)).thenReturn(null);
         when(this.qm.createQuery(Matchers.anyString(), Matchers.anyString())).thenReturn(query);
         when(query.execute()).thenReturn(new ArrayList<>());
 
-        Response response = this.component.updatePatient("{}", this.eid, UPDATE);
-        verify(this.logger).debug("No patient record with external ID [{}] exists yet", this.eid);
-        verify(this.logger).debug("Creating patient record with external ID [{}]", this.eid);
+        Response response = this.component.updatePatient(EMPTY_JSON, EID);
+        verify(this.logger).debug("No patient record with external ID [{}] exists yet", EID);
+        verify(this.logger).debug("Creating patient record with external ID [{}]", EID);
         assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatus());
     }
 
@@ -249,13 +255,13 @@ public class DefaultPatientByExternalIdResourceImplTest
     public void updatePatientNotFoundNewPatientNotCreatedIfInvalidJson() throws QueryException
     {
         Query query = mock(DefaultQuery.class);
-        when(this.repository.getByName(this.eid)).thenReturn(null);
+        when(this.repository.getByName(EID)).thenReturn(null);
         when(this.qm.createQuery(Matchers.anyString(), Matchers.anyString())).thenReturn(query);
         when(query.execute()).thenReturn(new ArrayList<>());
 
-        Response response = this.component.updatePatient("[]", this.eid, UPDATE);
-        verify(this.logger).debug("No patient record with external ID [{}] exists yet", this.eid);
-        verify(this.logger).debug("Creating patient record with external ID [{}]", this.eid);
+        Response response = this.component.updatePatient("[]", EID);
+        verify(this.logger).debug("No patient record with external ID [{}] exists yet", EID);
+        verify(this.logger).debug("Creating patient record with external ID [{}]", EID);
         verify(this.repository, never()).create();
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
     }
@@ -264,15 +270,15 @@ public class DefaultPatientByExternalIdResourceImplTest
     public void updatePatientNotFoundNewPatientNotCreatedIfUserDoesNotHaveEditRights() throws QueryException
     {
         Query query = mock(DefaultQuery.class);
-        when(this.repository.getByName(this.eid)).thenReturn(null);
+        when(this.repository.getByName(EID)).thenReturn(null);
         when(this.qm.createQuery(Matchers.anyString(), Matchers.anyString())).thenReturn(query);
         when(query.execute()).thenReturn(new ArrayList<>());
         when(this.access.hasAccess(eq(Right.EDIT), eq(this.userReference), any(EntityReference.class)))
             .thenReturn(false);
 
-        Response response = this.component.updatePatient("{}", this.eid, UPDATE);
-        verify(this.logger).debug("No patient record with external ID [{}] exists yet", this.eid);
-        verify(this.logger).debug("Creating patient record with external ID [{}]", this.eid);
+        Response response = this.component.updatePatient(EMPTY_JSON, EID);
+        verify(this.logger).debug("No patient record with external ID [{}] exists yet", EID);
+        verify(this.logger).debug("Creating patient record with external ID [{}]", EID);
         verify(this.logger).error("Edit access denied to user [{}].", this.user);
         verify(this.repository, never()).create();
         assertEquals(Response.Status.FORBIDDEN.getStatusCode(), response.getStatus());
@@ -282,18 +288,18 @@ public class DefaultPatientByExternalIdResourceImplTest
     public void updatePatientNotFoundNewPatientSpecifiesIdInJson() throws QueryException
     {
         Query query = mock(DefaultQuery.class);
-        when(this.repository.getByName(this.eid)).thenReturn(null);
+        when(this.repository.getByName(EID)).thenReturn(null);
         when(this.qm.createQuery(Matchers.anyString(), Matchers.anyString())).thenReturn(query);
         when(query.execute()).thenReturn(new ArrayList<>());
 
-        Response response = this.component.updatePatient("{\"external_id\":\"abc\"}", this.eid, UPDATE);
-        verify(this.logger).debug("No patient record with external ID [{}] exists yet", this.eid);
-        verify(this.logger).debug("Creating patient record with external ID [{}]", this.eid);
+        Response response = this.component.updatePatient("{\"external_id\":\"abc\"}", EID);
+        verify(this.logger).debug("No patient record with external ID [{}] exists yet", EID);
+        verify(this.logger).debug("Creating patient record with external ID [{}]", EID);
         assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatus());
 
         ArgumentCaptor<JSONObject> json = ArgumentCaptor.forClass(JSONObject.class);
         verify(this.patient).updateFromJSON(json.capture());
-        assertEquals("abc", json.getValue().optString("external_id"));
+        assertEquals("abc", json.getValue().optString(EXTERNAL_ID));
         assertEquals(1, json.getValue().length());
     }
 
@@ -301,18 +307,18 @@ public class DefaultPatientByExternalIdResourceImplTest
     public void updatePatientNotFoundNewPatientNoIdInJson() throws QueryException
     {
         Query query = mock(DefaultQuery.class);
-        when(this.repository.getByName(this.eid)).thenReturn(null);
+        when(this.repository.getByName(EID)).thenReturn(null);
         when(this.qm.createQuery(Matchers.anyString(), Matchers.anyString())).thenReturn(query);
         when(query.execute()).thenReturn(new ArrayList<>());
 
-        Response response = this.component.updatePatient("{}", this.eid, UPDATE);
-        verify(this.logger).debug("No patient record with external ID [{}] exists yet", this.eid);
-        verify(this.logger).debug("Creating patient record with external ID [{}]", this.eid);
+        Response response = this.component.updatePatient(EMPTY_JSON, EID);
+        verify(this.logger).debug("No patient record with external ID [{}] exists yet", EID);
+        verify(this.logger).debug("Creating patient record with external ID [{}]", EID);
         assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatus());
 
         ArgumentCaptor<JSONObject> json = ArgumentCaptor.forClass(JSONObject.class);
         verify(this.patient).updateFromJSON(json.capture());
-        assertEquals("eid", json.getValue().optString("external_id"));
+        assertEquals(EID, json.getValue().optString(EXTERNAL_ID));
         assertEquals(1, json.getValue().length());
     }
 
@@ -321,7 +327,7 @@ public class DefaultPatientByExternalIdResourceImplTest
     {
         when(this.access.hasAccess(Right.EDIT, this.userReference, this.patientReference)).thenReturn(false);
 
-        Response response = this.component.updatePatient("json", this.eid, UPDATE);
+        Response response = this.component.updatePatient("json", EID);
         verify(this.logger).debug("Edit access denied to user [{}] on patient record [{}]", null, this.patient.getId());
         assertEquals(Response.Status.FORBIDDEN.getStatusCode(), response.getStatus());
 
@@ -330,7 +336,7 @@ public class DefaultPatientByExternalIdResourceImplTest
     @Test(expected = WebApplicationException.class)
     public void updatePatientWrongJSONId() throws ComponentLookupException
     {
-        this.component.updatePatient("{\"id\":\"notid\"}", "eid", UPDATE);
+        this.component.updatePatient("{\"id\":\"notid\"}", EID);
     }
 
     @Test(expected = WebApplicationException.class)
@@ -339,17 +345,17 @@ public class DefaultPatientByExternalIdResourceImplTest
         doThrow(Exception.class).when(this.patient).updateFromJSON(Matchers.any(JSONObject.class), Matchers.any(
             PatientWritePolicy.class));
 
-        this.component.updatePatient("{\"id\":\"id\"}", "eid", UPDATE);
+        this.component.updatePatient("{\"id\":\"id\"}", EID);
         verify(this.logger).debug("Failed to update patient [{}] from JSON: {}. Source JSON was: {}",
-            this.id, "{\"id\":\"id\"}");
+            ID, "{\"id\":\"id\"}");
     }
 
     @Test
     public void updatePatientReturnsNoContentResponse() throws ComponentLookupException
     {
         String json = "{\"id\":\"id\"}";
-        Response response = this.component.updatePatient(json, this.eid, UPDATE);
-        verify(this.logger).debug("Updating patient record with external ID [{}] via REST with JSON: {}", this.eid,
+        Response response = this.component.updatePatient(json, EID);
+        verify(this.logger).debug("Updating patient record with external ID [{}] via REST with JSON: {}", EID,
             json);
         assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatus());
     }
@@ -358,13 +364,13 @@ public class DefaultPatientByExternalIdResourceImplTest
     public void deletePatientReturnsNotFoundStatus() throws QueryException
     {
         Query query = mock(DefaultQuery.class);
-        when(this.repository.getByName(this.eid)).thenReturn(null);
+        when(this.repository.getByName(EID)).thenReturn(null);
         when(this.qm.createQuery(Matchers.anyString(), Matchers.anyString())).thenReturn(query);
         when(query.execute()).thenReturn(new ArrayList<>());
 
-        Response response = this.component.deletePatient(this.eid);
+        Response response = this.component.deletePatient(EID);
 
-        verify(this.logger).debug("No patient record with external ID [{}] exists yet", this.eid);
+        verify(this.logger).debug("No patient record with external ID [{}] exists yet", EID);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
     }
 
@@ -373,7 +379,7 @@ public class DefaultPatientByExternalIdResourceImplTest
     {
         when(this.access.hasAccess(Right.DELETE, this.userReference, this.patientReference)).thenReturn(false);
 
-        Response response = this.component.deletePatient(this.eid);
+        Response response = this.component.deletePatient(EID);
 
         verify(this.logger).debug("Delete access denied to user [{}] on patient record [{}]", this.user,
             this.patient.getId());
@@ -386,12 +392,12 @@ public class DefaultPatientByExternalIdResourceImplTest
         XWiki wiki = mock(XWiki.class);
         doReturn(wiki).when(this.context).getWiki();
         doThrow(XWikiException.class).when(wiki).deleteDocument(any(XWikiDocument.class), eq(this.context));
-        when(this.repository.getByName(this.eid)).thenReturn(this.patient);
+        when(this.repository.getByName(EID)).thenReturn(this.patient);
         when(this.access.hasAccess(Right.DELETE, null, null)).thenReturn(true);
 
         WebApplicationException ex = null;
         try {
-            this.component.deletePatient(this.eid);
+            this.component.deletePatient(EID);
         } catch (WebApplicationException temp) {
             ex = temp;
         }
@@ -399,7 +405,7 @@ public class DefaultPatientByExternalIdResourceImplTest
         assertNotNull("deletePatient did not throw a WebApplicationException as expect "
             + "when catching an XWikiException", ex);
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), ex.getResponse().getStatus());
-        verify(this.logger).warn(eq("Failed to delete patient record with external id [{}]: {}"), eq(this.eid),
+        verify(this.logger).warn(eq("Failed to delete patient record with external id [{}]: {}"), eq(EID),
             anyString());
     }
 
@@ -409,9 +415,9 @@ public class DefaultPatientByExternalIdResourceImplTest
         XWiki wiki = mock(XWiki.class);
         doReturn(wiki).when(this.context).getWiki();
 
-        Response response = this.component.deletePatient(this.eid);
+        Response response = this.component.deletePatient(EID);
 
-        verify(this.logger).debug("Deleting patient record with external ID [{}] via REST", this.eid);
+        verify(this.logger).debug("Deleting patient record with external ID [{}] via REST", EID);
         assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatus());
     }
 
@@ -423,18 +429,18 @@ public class DefaultPatientByExternalIdResourceImplTest
             .createQuery("where doc.object(PhenoTips.PatientClass).external_id = :eid", Query.XWQL);
 
         List<String> results = new ArrayList<>();
-        results.add(this.eid);
-        results.add(this.eid);
+        results.add(EID);
+        results.add(EID);
         doReturn(results).when(q).execute();
 
-        when(this.repository.getByName(this.eid)).thenReturn(null);
+        when(this.repository.getByName(EID)).thenReturn(null);
 
-        Response responseGet = this.component.getPatient(this.eid);
-        Response responseUpdate = this.component.updatePatient(this.eid, this.eid, UPDATE);
-        Response responseDelete = this.component.deletePatient(this.eid);
+        Response responseGet = this.component.getPatient(EID);
+        Response responseUpdate = this.component.updatePatient(EID, EID);
+        Response responseDelete = this.component.deletePatient(EID);
 
         verify(this.logger, times(3)).debug("Multiple patient records ({}) with external ID [{}]: {}",
-            2, this.eid, results);
+            2, EID, results);
         verify(this.factory, times(3)).createAlternatives(anyListOf(String.class), eq(this.uriInfo));
         assertEquals(300, responseGet.getStatus());
         assertEquals(300, responseUpdate.getStatus());
@@ -447,15 +453,128 @@ public class DefaultPatientByExternalIdResourceImplTest
         doThrow(QueryException.class).when(this.qm)
             .createQuery("where doc.object(PhenoTips.PatientClass).external_id = :eid", Query.XWQL);
 
-        when(this.repository.getByName(this.eid)).thenReturn(null);
+        when(this.repository.getByName(EID)).thenReturn(null);
 
-        Response responseGet = this.component.getPatient(this.eid);
-        Response responseUpdate = this.component.updatePatient("{}", this.eid, UPDATE);
-        Response responseDelete = this.component.deletePatient(this.eid);
+        Response responseGet = this.component.getPatient(EID);
+        Response responseUpdate = this.component.updatePatient(EMPTY_JSON, EID);
+        Response responseDelete = this.component.deletePatient(EID);
 
-        verify(this.logger, times(3)).warn("Failed to retrieve patient with external id [{}]: {}", this.eid, null);
+        verify(this.logger, times(3)).warn("Failed to retrieve patient with external id [{}]: {}", EID, null);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), responseGet.getStatus());
         assertEquals(Response.Status.NO_CONTENT.getStatusCode(), responseUpdate.getStatus());
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), responseDelete.getStatus());
+    }
+
+    // ----------------------------Patch Patient Tests-----------------------------
+
+    @Test(expected = WebApplicationException.class)
+    public void patchPatientWithNullJsonThrowsWebApplicationException()
+    {
+        try {
+            this.component.patchPatient(null, EID);
+        } catch (final WebApplicationException ex) {
+            Assert.assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), ex.getResponse().getStatus());
+            throw ex;
+        }
+    }
+
+    @Test(expected = WebApplicationException.class)
+    public void patchPatientWithEmptyJsonThrowsWebApplicationException()
+    {
+        try {
+            this.component.patchPatient(StringUtils.EMPTY, EID);
+        } catch (final WebApplicationException ex) {
+            Assert.assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), ex.getResponse().getStatus());
+            throw ex;
+        }
+    }
+
+    @Test(expected = WebApplicationException.class)
+    public void patchPatientWithBlankJsonThrowsWebApplicationException()
+    {
+        try {
+            this.component.patchPatient(StringUtils.SPACE, EID);
+        } catch (final WebApplicationException ex) {
+            Assert.assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), ex.getResponse().getStatus());
+            throw ex;
+        }
+    }
+
+    @Test
+    public void patchPatientNoPatientWithSpecifiedEidExistsResultsPatientBeingCreated() throws QueryException
+    {
+        when(this.repository.get(PATIENT_ID)).thenReturn(null);
+        final Query query = mock(Query.class);
+        when(this.qm.createQuery(anyString(), eq(Query.XWQL))).thenReturn(query);
+        when(query.execute()).thenReturn(Collections.emptyList());
+        final Response response = component.patchPatient(EMPTY_JSON, PATIENT_ID);
+        Assert.assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatus());
+        verify(this.repository, times(1)).create();
+    }
+
+    @Test
+    public void patchPatientManyPatientsWithSpecifiedEidExistResultsInCorrectResponse() throws QueryException
+    {
+        when(this.repository.get(PATIENT_ID)).thenReturn(null);
+        final Query query = mock(Query.class);
+        when(this.qm.createQuery(anyString(), eq(Query.XWQL))).thenReturn(query);
+        when(query.execute()).thenReturn(Arrays.asList("one", "two"));
+        final Response response = component.patchPatient(EMPTY_JSON, PATIENT_ID);
+        Assert.assertEquals(300, response.getStatus());
+        verify(this.repository, never()).create();
+    }
+
+    @Test(expected=WebApplicationException.class)
+    public void patchPatientUserHasNoEditAccessThrowsWebApplicationException()
+    {
+        try {
+            when(this.access.hasAccess(Right.EDIT, this.userReference, this.patientReference)).thenReturn(false);
+            this.component.patchPatient(EMPTY_JSON, EID);
+        } catch (final WebApplicationException ex) {
+            Assert.assertEquals(Response.Status.FORBIDDEN.getStatusCode(), ex.getResponse().getStatus());
+            throw ex;
+        }
+    }
+
+    @Test(expected=WebApplicationException.class)
+    public void patchPatientInvalidJsonThrowsWebApplicationException()
+    {
+        try {
+            this.component.patchPatient("[]", EID);
+        } catch (final WebApplicationException ex) {
+            Assert.assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), ex.getResponse().getStatus());
+            throw ex;
+        }
+    }
+
+    @Test(expected = WebApplicationException.class)
+    public void patchPatientIdFromJsonAndRetrievedPatientIdConflictThrowsWebApplicationException()
+    {
+        try {
+            this.component.patchPatient("{\"id\":\"wrong\"}", EID);
+        } catch (final WebApplicationException ex) {
+            Assert.assertEquals(Response.Status.CONFLICT.getStatusCode(), ex.getResponse().getStatus());
+            throw ex;
+        }
+    }
+
+    @Test(expected = WebApplicationException.class)
+    public void patchPatientUpdatingPatientFromJsonFailsResultsInWebApplicationException(){
+        try {
+            doThrow(new RuntimeException()).when(this.patient).updateFromJSON(any(JSONObject.class),
+                eq(PatientWritePolicy.MERGE));
+            this.component.patchPatient(EMPTY_JSON, EID);
+        } catch (final WebApplicationException ex) {
+            Assert.assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), ex.getResponse().getStatus());
+            throw ex;
+        }
+    }
+
+    @Test
+    public void patchPatientUpdatesPatientSuccessfully()
+    {
+        final Response response = this.component.patchPatient(EMPTY_JSON, EID);
+        verify(this.patient, times(1)).updateFromJSON(any(JSONObject.class), eq(PatientWritePolicy.MERGE));
+        Assert.assertEquals(Response.Status.NO_CONTENT.getStatusCode(), response.getStatus());
     }
 }
