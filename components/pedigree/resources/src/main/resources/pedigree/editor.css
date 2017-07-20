@@ -1073,30 +1073,84 @@
   left: 4px;
   margin: 1.4em 0 0;
 }
+#cancers_data_table, table.summary-group {
+  width: 100%;
+}
 .cancer_field td {
-  padding: .1em .2em .1em .2em;
+  padding-top: .4em;
 }
-.cancer_textarea td {
-  padding: .3em 0 .2em .2em;
+table.summary-group tr.term-holder span.button-holder {
+  float: right;
 }
+table.summary-group tr.term-holder span.button-holder span.patient-menu-button {
+  font-size: 87.5%;
+}
+table.summary-group span.action-done {
+  float: right;
+}
+table.summary-group div.summary-item {
+  background-image: none;
+  box-shadow: 0 2px 5px #999;
+}
+table.summary-group div.summary-item {
+  background-color: #F9F9F9;
+  background-position: left center;
+  background-repeat: no-repeat;
+  border-radius: 0 .5em .5em .5em;
+  border: 1px solid #FFF;
+  font-size: 87.5%;
+  padding: .5em 10px;
+  margin: 0 .5em 0 2em;
+  position: relative;
+}
+
+div.summary-item + div.summary-item {
+  margin-top: 1em;
+}
+table.summary-group div.summary-item dt.inline {
+  float: left;
+}
+table.summary-group div.summary-item dt.collapsible label,
+table.summary-group div.summary-item dt.collapsible span.selected-value {
+  margin-left: .5em;
+}
+table.summary-group div.summary-item dd.inline span {
+  margin-left: .5em;
+}
+/*table.summary-group div.summary-item dd.inline select,*/
+/*table.summary-group div.summary-item dt.inline label {*/
+  /*display: inline-block;*/
+  /*vertical-align: middle;*/
+/*}*/
+/*table.summary-group div.summary-item dd.inline select {*/
+  /*color: $theme.textSecondaryColor;*/
+/*}*/
+table.summary-group div.summary-item ul {
+  list-style-type: none;
+  padding-left: 1em;
+  margin-left: 0;
+}
+/*.cancer_textarea td {*/
+  /*padding: .3em 0 .2em .2em;*/
+/*}*/
 .cancer-header td {
   padding-top: 0.65em;
 }
-.cancer-notes {
-  margin-left: 2px;
-}
-.cancer-notes-textarea {
-  margin-bottom: 4px;
-}
+/*.cancer-notes {*/
+  /*margin-left: 2px;*/
+/*}*/
+/*.cancer-notes-textarea {*/
+  /*margin-bottom: 4px;*/
+/*}*/
 .cancer-header {
   color: #888;
 }
-.cancer_status_select {
-  margin-right: 10px;
-}
-.cancer_age_select {
-  margin-right: 3px;
-}
+/*.cancer_status_select {*/
+  /*margin-right: 10px;*/
+/*}*/
+/*.cancer_age_select {*/
+  /*margin-right: 3px;*/
+/*}*/
 .cancer_field .clickable:hover {
   cursor: pointer;
 }
@@ -1104,16 +1158,16 @@
   color: #CCC;
   cursor: default;
 }
-.cancer_field textarea {
-  margin-top: 3px;
-}
-.menu-box .patient-no-cancers-button {
-  width: 88%;
-  max-width: 20em;
-  margin-top: 10px;
-  float: left !important;
-  text-align: center;
-}
+/*.cancer_field textarea {*/
+  /*margin-top: 3px;*/
+/*}*/
+/*.menu-box .patient-no-cancers-button {*/
+  /*width: 88%;*/
+  /*max-width: 20em;*/
+  /*margin-top: 10px;*/
+  /*float: left !important;*/
+  /*text-align: center;*/
+/*}*/
 
 /* Option types */
 .node-type-options .node-type-m.text-in-middle strong {

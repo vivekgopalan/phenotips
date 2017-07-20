@@ -29,7 +29,9 @@ define([
         "pedigree/model/helpers",
         "pedigree/view/datepicker",
         "pedigree/view/graphicHelpers",
-        "pedigree/view/ageCalc"
+        "pedigree/view/ageCalc",
+        "pedigree/detailsDialogue",
+        "pedigree/detailsDialogueGroup"
     ], function(
         Disorder,
         HPOTerm,
@@ -38,7 +40,9 @@ define([
         Helpers,
         DatePicker,
         GraphicHelpers,
-        AgeCalc
+        AgeCalc,
+        DetailsDialogue,
+        DetailsDialogueGroup
     ){
     NodeMenu = Class.create({
         initialize : function(data, otherCSSClass) {
@@ -883,199 +887,76 @@ define([
             'cancerlist' : function (data) {
                 //var timer = new Helpers.Timer();
                 var result = this._generateEmptyField(data);
-                var cancerList = editor.getCancerLegend()._getAllSupportedCancers();
-
-                var tableHeaderRow = new Element('tr', {'class': 'cancer_field cancer-header field-no-user-select'} );
-                var label1 = new Element('td').insert(new Element('label', {'class': 'cancer_label_field'} ).update("Name"));
-                var label2 = new Element('td').insert(new Element('label', {'class': 'cancer_status_select'} ).update("Status"));
-                var label3 = new Element('td').insert(new Element('label', {'class': 'cancer_age_select'} ).update("As of"));
-                var label4 = new Element('td');  // notes icon column
-                tableHeaderRow.insert(label1).insert(label2).insert(label3).insert(label4);
-                var table = new Element('table');
-                table.insert(tableHeaderRow);
-
-                // create once and clone for each cancer - it takes too much time to create all elements anew each time
-                // (Note1: for performace reasons also using raw HTML for options)
-                // (Note2: using span around select because IE9 does not allow setting innerHTML of <select>-s)
-                var maxAge = 100;
-                var minAge = 1;
-                var majorStepSize = 10;
-                var spanAgeProto = new Element('span');
-                var optionsHTML = '<select name="' + data.name + '" class="cancer_age_select field-no-user-select"><option value=""></option>';
-                optionsHTML += '<option value="before_' + minAge + '">before ' + minAge + '</option>';
-                for (var age = minAge; age <= maxAge; age++) {
-                    if (age % majorStepSize == 0) {
-                        optionsHTML += '<option value="before_' + age + '">' + (age - majorStepSize + 1) + '-' + age + '</option>';
-                    }
-                    optionsHTML += '<option value="' + age + '">' + age + '</option>';
-                }
-                optionsHTML += '<option value="after_' + maxAge + '">after ' + maxAge + '</option></select>';
-                spanAgeProto.innerHTML = optionsHTML;
-
-                var spanSelectProto = new Element('span');
-                spanSelectProto.innerHTML = "<select name='"+data.name+"' class='cancer_status_select field-no-user-select'>" +
-                                            "<option value=''></option>" +
-                                            "<option value='affected'>Affected</option>" +
-                                            "<option value='unaffected'>Unaffected</option></select>";
+                var cancerLegend = editor.getCancerLegend();
+                var cancerList = cancerLegend._getAllSupportedCancers();
+                var table = new Element('table', {'id' : data.name + '_data_table'});
 
                 var cancersUIElements = [];
                 for (var i = 0; i < cancerList.length; i++) {
-                    var cancerName = cancerList[i];
+                    var cancerId = cancerList[i];
+                    var cancerName = cancerLegend.getCancer(cancerId).getName();
                     var tableRow = new Element('tr', {'class': 'cancer_field'} );
-                    var label = new Element('td').insert(new Element('label', {'class': 'cancer_label_field'} ).update(cancerName));
 
-                    var spanAge   = spanAgeProto.cloneNode(true);
-                    var selectAge = spanAge.firstChild;
-                    selectAge.disable();
-                    selectAge.id = "cancer_age_" + cancerName;
+                    var qualifiersWidget =
+                      new DetailsDialogueGroup(data.name, {'allowMultiDialogues': true, 'disableTermDelete': true})
+                        .withLabel(cancerName, cancerId, true)
+                        .dialoguesAddDeleteAction(null)
+                        .dialoguesAddNumericSelect({
+                            'from': 1,
+                            'to': 100,
+                            'step': 10,
+                            'defListItemClass': 'age_of_onset',
+                            'inputSourceClass': 'cancer_age_select field-no-user-select',
+                            'qualifierLabel': 'Age:',
+                            'qualifierName': 'ageAtDiagnosis'})
+                        .dialoguesAddItemSelect({
+                            'data': ['Unknown', 'Bilateral', 'Unilateral', 'Right', 'Left'],
+                            'defListItemClass': 'laterality',
+                            'inputSourceClass': 'cancer_laterality_select',
+                            'qualifierLabel': 'Laterality:',
+                            'qualifierName': 'laterality'})
+                        .dialoguesAddItemSelect({
+                            'data': ['Primary', 'Mets'],
+                            'defListItemClass': 'type',
+                            'inputSourceClass': 'cancer_type_select',
+                            'qualifierLabel': 'Type:',
+                            'qualifierName': 'primary'})
+                        .dialoguesAddTextBox(false, {
+                            'defListItemClass': 'comments',
+                            'inputSourceClass': 'cancer_notes',
+                            'qualifierLabel': 'Notes:',
+                            'qualifierName': 'notes'});
 
-                    var spanSelect = spanSelectProto.cloneNode(true);
-                    var select = spanSelect.firstChild;
-                    select.id = "cancer_status_" + cancerName;
+                    var qualifiers = qualifiersWidget.get();
+                    qualifiers._widget = qualifiersWidget;
 
-                    var textInput = new Element('textArea', {'class': 'cancer-notes-textarea', 'type': 'text', 'name': data.name}).hide();
-                    textInput.disabled = true;
-                    textInput.id = "cancer_notes_" + cancerName;
-                    var expandNotes = new Element('label', {'class': 'clickable cancer-notes', 'for': textInput.id}).update("<span class='fa fa-file-text-o'></span>");
+                    cancersUIElements.push({'qualifiers': qualifiers});
 
-                    var toggleNotes = (function(textInput, expandNotes){
-                        return function(){
-                            if (textInput.disabled == true) {
-                                textInput.disabled = false;
-                                textInput.show();
-                                expandNotes.hide();
-                            } else if (textInput.value == "") {
-                                textInput.hide();
-                                textInput.disabled = true;
-                                expandNotes.show()
-                            }
-                        };
-                    })(textInput, expandNotes);
+                    qualifiers._getValue = function() {
+                        var data = [];
 
-                    var enableNotes = (function(expandNotes, textInput, toggleNotes){
-                        return function(){
-                            expandNotes.observe('click', toggleNotes);
-                            textInput.observe('blur', toggleNotes);
-                            expandNotes.removeClassName('disabled');
-                        };
-                    })(expandNotes, textInput, toggleNotes);
-
-                    var disableNotes = (function(expandNotes, textInput, toggleNotes){
-                        return function(){
-                            expandNotes.stopObserving('click', toggleNotes);
-                            textInput.stopObserving('blur', toggleNotes);
-                            textInput.value="";
-                            textInput.hide();
-                            textInput.disabled = true;
-                            expandNotes.show()
-                            expandNotes.addClassName('disabled');
-                        };
-                    })(expandNotes, textInput, toggleNotes);
-
-                    expandNotes.enableNotes  = enableNotes;
-                    expandNotes.disableNotes = disableNotes;
-
-                    cancersUIElements.push({"name": cancerName, "status": select, "age": selectAge, "notes": textInput, "enableNotes": enableNotes});
-
-                    select._getValue = function() {
-                        var data = {};
                         for (var i = 0; i < cancersUIElements.length; i++) {
                             var nextCancer = cancersUIElements[i];
+                            var cancerWidget = nextCancer.qualifiers._widget;
 
-                            var statusTxt = (nextCancer.status.selectedIndex >= 0) ? nextCancer.status.options[nextCancer.status.selectedIndex].value : '';
-                            var ageTxt    = (nextCancer.age.selectedIndex >= 0) ? nextCancer.age.options[nextCancer.age.selectedIndex].value : '';
-                            var notesTxt  = nextCancer.notes.value;
-
-                            if (statusTxt && statusTxt != "") {
-
-                                var status = (statusTxt == "affected") ? true : false;
-
-                                var ageNumeric = 0;
-                                if (Helpers.isInt(ageTxt)) {
-                                    ageNumeric = parseInt(ageTxt);
-                                } else {
-                                    var before = ageTxt.match(/before_(\d+)/);
-                                    if (before) {
-                                        ageNumeric = before[1] - 5;
-                                        if (ageNumeric < 0) ageNumeric = 0;
-                                    }
-                                    var after = ageTxt.match(/after_(\d+)/);
-                                    if (after) {
-                                        ageNumeric = after[1];
-                                    }
-                                }
-
-                                data[nextCancer.name] = { "affected": status,
-                                                        "ageAtDiagnosis": ageTxt,
-                                                        "numericAgeAtDiagnosis": ageNumeric,
-                                                        "notes": notesTxt};
+                            if (cancerWidget.isAffected()) {
+                                data.push(cancerWidget.getValues());
                             }
                         }
                         return [ data ];
                     };
-                    selectAge._getValue = textInput._getValue = select._getValue;
+                    this._attachFieldEventListeners(qualifiers, [
+                        data.name + ':status:changed',
+                        data.name + ':term:deleted',
+                        data.name + ':qualifiers:cleared',
+                        data.name + ':qualifier:deleted',
+                        data.name + ':dialogue:switched'
+                      ]);
 
-                    this._attachFieldEventListeners(select, ['change']);
-                    this._attachFieldEventListeners(selectAge, ['change']);
-                    this._attachFieldEventListeners(textInput, ['change', 'keyup']);
 
-                    var genSelectFunction = function(select, selectAge, enableNotes, disableNotes) {
-                        return function() {
-                            if (select.selectedIndex > 0) {
-                                selectAge.enable();
-                                enableNotes();
-                            } else {
-                                selectAge.selectedIndex = 0;
-                                selectAge.disable();
-                                disableNotes();
-                            }
-                        }
-                    }
-                    var events = ['change'];
-                    browser.isGecko && events.push('keyup');
-                    events.each(function(eventName) {
-                        var selFunc = genSelectFunction(select, selectAge, enableNotes, disableNotes);
-                        select.observe(eventName, function() {
-                            selFunc();
-                        });
-                    });
-                    tableRow.insert(label)
-                       .insert(new Element('td').insert(spanSelect))
-                       .insert(new Element('td').insert(spanAge))
-                       .insert(new Element('td').insert(expandNotes));
-                    table.insert(tableRow)
-                         .insert(new Element('tr', {'class': 'cancer_textarea'}).insert(new Element('td', {'colspan': 3}).insert(textInput)));
+                    table.insert(tableRow.insert(qualifiers));
                     result.inputsContainer.insert(table);
-
                 }
-
-                var buttonContainer = new Element('div', { 'class': 'button-container'});
-                var classes = 'patient-menu-button patient-no-cancers-button';
-                var noneButton = new Element('span', {'class': classes}).update("None of the above as of today");
-                var nameHolder = new Element('input', {'type': 'hidden', 'name': data.name});
-                var _this = this;
-                noneButton.observe('click', function(event) {
-                    for (var i = 0; i < cancersUIElements.length; i++) {
-                        // clear age. It will get overwritten by current age if age is known
-                        cancersUIElements[i].age.value = "";
-                        cancersUIElements[i].status.value = "unaffected";
-                        cancersUIElements[i].enableNotes();
-                        cancersUIElements[i].age.enable();
-                        var birthDate = _this.targetNode.getBirthDate();
-                        if (birthDate && birthDate.isComplete()) {
-                            var age = AgeCalc.getAgeForCancersDropdown(birthDate, _this.targetNode.getDeathDate());
-                            cancersUIElements[i].age.value = age;
-                        }
-                    }
-                    Event.fire(nameHolder, 'custom:selection:changed');
-                    _this.reposition();
-                });
-                nameHolder._getValue = cancersUIElements[0].status._getValue;
-                this._attachFieldEventListeners(nameHolder, ['custom:selection:changed']);
-                buttonContainer.update(noneButton).insert(nameHolder);
-                result.inputsContainer.insert(buttonContainer);
-
-                //console.log( "=== Generate cancers time: " + timer.report() + "ms ==========" );
                 return result;
             },
             'hidden' : function (data) {
@@ -1404,70 +1285,18 @@ define([
                 }
             },
             'cancerlist': function (container, value) {
-                var cancerList = editor.getCancerLegend()._getAllSupportedCancers();
-
-                for (var i = 0; i < cancerList.length; i++) {
-                    var cancerName   = cancerList[i];
-
-                    var statusSelect = container.down('select[id="cancer_status_' + cancerName + '"]');
-                    var ageSelect    = container.down('select[id="cancer_age_' + cancerName + '"]');
-                    var notesInput   = container.down('#cancer_notes_' + cancerName);
-                    var enableNotesIcon = container.down("label[for=" + notesInput.id + "]");
-
-                    if (!statusSelect) {
-                        // unsupported cancer?
-                        alert("This patient is reported to have an unsupported cancer '" + cancerName + "'");
-                        continue;
-                    }
-
-                    if (value.hasOwnProperty(cancerName)) {
-                        if (value[cancerName].hasOwnProperty("affected") && value[cancerName].affected) {
-                            var optionStatus = statusSelect.down('option[value="affected"]');
+                // TODO: Fixme. Laterality and type are stored wrong. Custom getValue?
+                var cancerLegend = editor.getCancerLegend();
+                for (var cancerID in value) {
+                    if (value.hasOwnProperty(cancerID)) {
+                        var cancerData = value[cancerID];
+                        if (cancerLegend._isSupportedCancer(cancerID)) {
+                            var qualifiers = container.down('table[id="cancers_' + cancerID + '"]');
+                            var qualifiersWidget = qualifiers._widget;
+                            qualifiersWidget.setValues(cancerData);
                         } else {
-                            var optionStatus = statusSelect.down('option[value="unaffected"]');
+                            // TODO: create a new widget and insert.
                         }
-
-                        if (value[cancerName].hasOwnProperty("ageAtDiagnosis")) {
-                            var ageOption = ageSelect.down('option[value="' + value[cancerName].ageAtDiagnosis + '"]');
-                        } else {
-                            var ageOption = ageSelect.down('option[value=""]');
-                        }
-
-                        if (value[cancerName].hasOwnProperty("notes") && value[cancerName].notes != "") {
-                            notesInput.value = value[cancerName].notes;
-                            notesInput.show();
-                            notesInput.disabled = false;
-                            enableNotesIcon.hide();
-                        } else if (value[cancerName].hasOwnProperty("notes") && value[cancerName].notes == "") {
-                            //In case the notes were blank but the cancer was selected, the enableNotes function must be called to add toggle behaviour
-                            enableNotesIcon.enableNotes();
-                        } else {
-                            notesInput.hide();
-                            notesInput.disabled = true;
-                            enableNotesIcon.show();
-                            enableNotesIcon.removeClassName('disabled');
-                        }
-
-                        ageSelect.enable();
-                    } else {
-                        var optionStatus = statusSelect.down('option[value=""]');
-
-                        var ageOption = ageSelect.down('option[value=""]');
-
-                        ageSelect.disable();
-
-                        notesInput.value = "";
-                        notesInput.hide();
-                        notesInput.disabled = true;
-                        if(enableNotesIcon){
-                            enableNotesIcon.disableNotes();
-                        };
-                    }
-                    if (optionStatus) {
-                        optionStatus.selected = 'selected';
-                    }
-                    if (ageOption) {
-                        ageOption.selected = 'selected';
                     }
                 }
             },

@@ -91,6 +91,10 @@ define([
             return clist;
         },
 
+        _isSupportedCancer: function(cancerId) {
+            return this._customCancerColors.hasOwnProperty(cancerId);
+        },
+
         /**
          * Returns the HPOTerm object for the cancer with the given ID. If object is not in cache yet
          * returns a newly created one which may have the cancer name & other attributes not loaded yet
