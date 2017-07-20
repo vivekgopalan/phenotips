@@ -176,12 +176,13 @@ define([
             if (!$super(node, cancerID)) {
                 return false;
             }
-            var currentCancers = Helpers.cloneObject(node.getCancers());
+            var currentCancers = node.getCancers();
             // only if the node does not have this cancer yet (either "not tested" or "unaffected")
             if (!currentCancers.hasOwnProperty(cancerID) || !currentCancers[cancerID].affected) {
-                currentCancers[cancerID] = {"affected": true};
+                var cancersArray = node.getPhenotipsFormattedCancers();
+                cancersArray.push({"affected": true, "id": cancerID, "name": this.getCancer(cancerID).getName()});
                 editor.getView().unmarkAll();
-                var properties = { "setCancers": currentCancers };
+                var properties = { "setCancers": cancersArray };
                 var event = { "nodeID": node.getID(), "properties": properties };
                 document.fire("pedigree:node:setproperty", event);
             } else {
