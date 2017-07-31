@@ -137,6 +137,12 @@ define([
 
             editor.getView().setAnonymizeStatus(anonymizeSettings);
 
+            // move white background up if it is not the first child element of <svg>, otherwise it will hide labels
+            var backgroundEl = $('white-bbox-background');
+            if (backgroundEl && backgroundEl.parentNode && backgroundEl.previousElementSibling) {
+                backgroundEl.parentNode.insertBefore(backgroundEl, backgroundEl.parentNode.firstChild);
+            }
+
             var _bbox = image.down().getBBox();
             var bbox = {};
             // Due to a bug (?) in firefox bounding box as reported by the browser may be a few pixels
@@ -335,6 +341,19 @@ define([
 
             menuItems.each(_createSubmenu.bind(menu));
             secondaryMenuItems.each(_createSubmenu.bind(secondaryMenu));
+
+            Element.observe(menu, 'mouseover', function() {
+                for (var nodeID in editor.getView().getNodeMap()) {
+                    if (editor.getView().getNodeMap().hasOwnProperty(nodeID)) {
+                        if (editor.getGraph().isPerson(nodeID) && !editor.getGraph().isPlaceholder(nodeID)) {
+                            var node = editor.getView().getNode(nodeID);
+                            if (node) {
+                                node.getGraphics().getHoverBox().animateHideHoverZone();
+                            }
+                        }
+                    }
+                }
+            });
         },
 
         /**

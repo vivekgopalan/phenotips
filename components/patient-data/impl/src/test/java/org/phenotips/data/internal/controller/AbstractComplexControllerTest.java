@@ -54,13 +54,15 @@ import com.xpn.xwiki.doc.XWikiDocument;
 import com.xpn.xwiki.objects.BaseObject;
 import com.xpn.xwiki.objects.BaseProperty;
 
+import net.jcip.annotations.NotThreadSafe;
+
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -69,6 +71,7 @@ import static org.mockito.Mockito.verify;
  * tested using a mock implementation of {@link AbstractComplexController} that provides simple definitions of the
  * abstract methods getName, getProperties, and getJsonPropertyName
  */
+@NotThreadSafe
 public class AbstractComplexControllerTest
 {
     private static final String DATA_NAME = AbstractComplexControllerTestImplementation.DATA_NAME;
@@ -87,12 +90,12 @@ public class AbstractComplexControllerTest
 
     @Rule
     public MockitoComponentMockingRule<PatientDataController<String>> mocker =
-        new MockitoComponentMockingRule<PatientDataController<String>>(
+        new MockitoComponentMockingRule<>(
             AbstractComplexControllerTestImplementation.class);
 
     @Rule
     public MockitoComponentMockingRule<PatientDataController<List<VocabularyProperty>>> codeFieldImplMocker =
-        new MockitoComponentMockingRule<PatientDataController<List<VocabularyProperty>>>(
+        new MockitoComponentMockingRule<>(
             AbstractComplexControllerCodeFieldsTestImplementation.class);
 
     @Mock
