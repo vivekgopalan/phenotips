@@ -64,7 +64,7 @@ public class DefaultMeasurementPercentileResourceImpl extends AbstractMeasuremen
         }
 
         MeasurementHandler handler;
-        handler = this.handlers.get(measurement);
+        handler = AbstractMeasurementRestResource.handlers.get(measurement);
         if (handler == null) {
             throw new WebApplicationException(generateErrorResponse(Response.Status.NOT_FOUND,
                 "Specified measurement type not found."));

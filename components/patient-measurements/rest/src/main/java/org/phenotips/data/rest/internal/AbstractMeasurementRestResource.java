@@ -17,6 +17,7 @@
  */
 package org.phenotips.data.rest.internal;
 
+import org.phenotips.measurements.ComputedMeasurementHandler;
 import org.phenotips.measurements.MeasurementHandler;
 
 import org.xwiki.rest.XWikiResource;
@@ -39,7 +40,17 @@ public abstract class AbstractMeasurementRestResource extends XWikiResource
 {
     /** Injected map of measurement handlers. */
     @Inject
-    protected Map<String, MeasurementHandler> handlers;
+    protected static Map<String, MeasurementHandler> handlers;
+
+    /**  Map of computed measurement handlers, such as the handlers for BMI and US:LS. */
+    protected static Map<String, ComputedMeasurementHandler> computationHandlers;
+    static {
+        for (String handlerName : handlers.keySet()) {
+            if (handlers.get(handlerName) instanceof ComputedMeasurementHandler) {
+                computationHandlers.put(handlerName, (ComputedMeasurementHandler) handlers.get(handlerName));
+            }
+        }
+    }
 
     /**
      * Generate a server response in case of error.
