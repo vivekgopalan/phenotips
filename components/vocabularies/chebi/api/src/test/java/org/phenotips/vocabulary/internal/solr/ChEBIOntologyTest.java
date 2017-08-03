@@ -62,7 +62,7 @@ public class ChEBIOntologyTest
 
     @Rule
     public final MockitoComponentMockingRule<Vocabulary> mocker =
-        new MockitoComponentMockingRule<Vocabulary>(ChEBIOntology.class);
+        new MockitoComponentMockingRule<>(ChEBIOntology.class);
 
     @SuppressWarnings("unchecked")
     @Before
