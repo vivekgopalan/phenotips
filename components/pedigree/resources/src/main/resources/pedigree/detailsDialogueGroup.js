@@ -189,6 +189,7 @@ define([
                 qualifiers.forEach(function(qualifier) {
                     _this.addDialogue(true).setValues(qualifier);
                 });
+                this._addDetailsClickListener();
             }
         },
 
@@ -233,8 +234,8 @@ define([
             this._dialogueMap = {};
             this._dialogueHolder.update();
             this._dialogueHolder.hide();
+            this.setAffected(false);
             this._removeDetailsClickListener();
-            (this._allowMultiDialogues || this.size() === 0) && this._addDetailsClickListener();
             this._removeOnClearDetailsListener();
         },
 

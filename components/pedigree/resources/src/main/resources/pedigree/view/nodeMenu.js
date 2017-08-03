@@ -1007,6 +1007,10 @@ define([
             });
         },
 
+        hideCancersData: function() {
+            this._setFieldValue['cancerlist'].call(this, this.fieldMap["cancers"].element, {});
+        },
+
         isVisible: function() {
             return this._onscreen;
         },
@@ -1021,6 +1025,7 @@ define([
                 && !event.findElement('.ok-cancel-dialogue')
                 && !event.findElement('.msdialog-screen')) {
                 this.hide();
+                this.hideCancersData();
             }
         },
 
@@ -1288,6 +1293,14 @@ define([
             'cancerlist': function (container, value) {
                 // TODO: Fixme. Laterality and type are stored wrong. Custom getValue?
                 var cancerLegend = editor.getCancerLegend();
+                var cancerList = cancerLegend._getAllSupportedCancers();
+                if (Object.getOwnPropertyNames(value).length === 0) {
+                    for (var i = 0; i < cancerList.length; i++) {
+                        var cancerID = cancerList[i];
+                        var qualifiers = container.down('table[id="cancers_' + cancerID + '"]');
+                        qualifiers._widget.setValues({});
+                    }
+                }
                 for (var cancerID in value) {
                     if (value.hasOwnProperty(cancerID)) {
                         var cancerData = value[cancerID];
