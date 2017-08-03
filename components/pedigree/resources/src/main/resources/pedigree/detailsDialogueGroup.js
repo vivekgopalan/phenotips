@@ -29,7 +29,7 @@ define([
             // Builds an empty container for the term.
             this._buildEmptyContainer();
             this._addDialogueHolderListener();
-            this._addDialogueFocusObservers();
+            this._addDialogueFocusManagers();
             this._attachKeyUpObserver();
         },
 
@@ -187,7 +187,7 @@ define([
                 var qualifiers = values.qualifiers || [];
                 var _this = this;
                 qualifiers.forEach(function(qualifier) {
-                    _this.addDialogue(true).setValues(qualifier);
+                    _this.addDialogue(true).setValues(qualifier).blur();
                 });
                 this._addDetailsClickListener();
             }
@@ -206,9 +206,9 @@ define([
             !this._allowMultiDialogues && this._removeDetailsClickListener();
             if (!silent) {
                 Event.fire(this._qualifiersContainer, this._dataName + ':dialogue:added');
-                this._crtFocus && this._crtFocus.removeClassName('focused');
-                this._crtFocus = dialogue.getDialogue().addClassName('focused');
-                Event.fire(this._qualifiersContainer, this._dataName + ':dialogue:focused');
+                this._crtFocus && this._blur(this._crtFocus);
+                this._crtFocus = dialogue.getDialogue();
+                this._focus(this._crtFocus);
             }
             this._dialogueHolder.show();
             return dialogue;
@@ -360,7 +360,11 @@ define([
         },
 
         _addDetailsClickListener: function() {
-            this._addDetailsButton.observe('click', this.addDialogue.bind(this, false));
+            var _this = this;
+            this._addDetailsButton.observe('click', function(event) {
+                event.stop();
+                _this.addDialogue(false)
+            });
             this._addDetailsButton.show();
         },
 
@@ -382,38 +386,51 @@ define([
         },
 
         // TODO: This is a monstrosity, refactor.
-        _addDialogueFocusObservers: function() {
+        _addDialogueFocusManagers: function() {
             var _this = this;
             document.observe('click', function (event) {
                 var summaryItem = event.findElement('div.summary-item');
                 if (summaryItem) {
                     if (_this._crtFocus) {
                         if (event.findElement('td.dialogue-holder') === _this._dialogueHolder) {
-                            _this._crtFocus.removeClassName('focused');
-                            Event.fire(_this._qualifiersContainer, _this._dataName + ':dialogue:blurred');
+                            _this._blur(_this._crtFocus);
                             _this._crtFocus = summaryItem;
-                            _this._crtFocus.addClassName('focused');
-                            Event.fire(_this._qualifiersContainer, _this._dataName + ':dialogue:focused');
+                            _this._focus(_this._crtFocus);
                         } else {
-                            _this._crtFocus.removeClassName('focused');
-                            Event.fire(_this._qualifiersContainer, _this._dataName + ':dialogue:blurred');
+                            _this._blur(_this._crtFocus);
                             _this._crtFocus = null;
                         }
                     } else {
                         if (event.findElement('td.dialogue-holder') === _this._dialogueHolder) {
                             _this._crtFocus = summaryItem;
-                            _this._crtFocus.addClassName('focused');
-                            Event.fire(_this._qualifiersContainer, _this._dataName + ':dialogue:focused');
+                            _this._focus(_this._crtFocus);
                         }
                     }
                 } else {
                     if (_this._crtFocus) {
-                        _this._crtFocus.removeClassName('focused');
-                        Event.fire(_this._qualifiersContainer, _this._dataName + ':dialogue:blurred');
+                        _this._blur(_this._crtFocus);
                         _this._crtFocus = null;
                     }
                 }
             })
+        },
+
+        _blur: function(elem) {
+            var elemID = elem.down('input').value;
+            var dialogue = this._dialogueMap[elemID];
+            if (dialogue) {
+                dialogue.blur();
+                Event.fire(this._qualifiersContainer, this._dataName + ':dialogue:blurred');
+            }
+        },
+
+        _focus: function(elem) {
+            var elemID = elem.down('input').value;
+            var dialogue = this._dialogueMap[elemID];
+            if (dialogue) {
+                dialogue.focus();
+                Event.fire(this._qualifiersContainer, this._dataName + ':dialogue:focused');
+            }
         },
 
         _attachKeyUpObserver: function() {

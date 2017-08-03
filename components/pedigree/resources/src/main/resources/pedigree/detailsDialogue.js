@@ -36,7 +36,8 @@ define([], function() {
             var step = options.step;
             var inputSourceClass = options.inputSourceClass || "";
             var spanElem = new Element('span');
-            var optionsHTML = '<select name="' + this._dataName + '" class="'+inputSourceClass+'"><option value=""></option>';
+            var optionsHTML = '<div class="'+inputSourceClass+'"></div>' +
+              '<select name="' + this._dataName + '" class="'+inputSourceClass+'"><option value=""></option>';
             optionsHTML += '<option value="before_' + from + '">before ' + from + '</option>';
             for (var num = from; num <= to; num++) {
                 if (num % step == 0) {
@@ -46,11 +47,26 @@ define([], function() {
             }
             optionsHTML += '<option value="after_' + to + '">after ' + to + '</option></select>';
             spanElem.innerHTML = optionsHTML;
+            var summary = spanElem.down('div');
+            summary.hide();
+            spanElem._getValue = function() {
+                var select = spanElem.down('select');
+                return select.selectedIndex >= 0 ? select.options[select.selectedIndex].value : "";
+            };
             spanElem._addValue = function(values) {
                 var fieldName = options.qualifierName || null;
                 if (fieldName) {
-                    var select = spanElem.down('select');
-                    values[fieldName] = select.selectedIndex >= 0 ? select.options[select.selectedIndex].value : "";
+                    values[fieldName] = spanElem._getValue();
+                }
+            };
+            spanElem._toggleSummarize = function() {
+                var select = spanElem.down('select');
+                if (select.visible()) {
+                    select.hide();
+                    summary.update(spanElem._getValue()).show();
+                } else {
+                    select.show();
+                    summary.hide();
                 }
             };
             spanElem._setValue = function(value) {
@@ -75,17 +91,34 @@ define([], function() {
             var inputSourceClass = options.inputSourceClass || "";
             var data = options.data || [""];
             var spanElem = new Element('span');
-            var optionsHTML = '<select name="' + this._dataName + '" class="'+inputSourceClass+'">';
+            var optionsHTML = '<div class="'+inputSourceClass+'"></div>' +
+              '<select name="' + this._dataName + '" class="'+inputSourceClass+'">';
             data.forEach(function(item) {
                 optionsHTML += '<option value="' + item + '">' + item + '</option>';
             });
             optionsHTML += '</select>';
             spanElem.innerHTML = optionsHTML;
+            var summary = spanElem.down('div');
+            summary.hide();
+            spanElem._getValue = function() {
+                var select = spanElem.down('select');
+                return select.selectedIndex >= 0 ? select.options[select.selectedIndex].value : "";
+            };
             spanElem._addValue = function(values) {
                 var fieldName = options.qualifierName || null;
                 if (fieldName) {
                     var select = spanElem.down('select');
                     values[fieldName] = select.selectedIndex >= 0 ? select.options[select.selectedIndex].value : "";
+                }
+            };
+            spanElem._toggleSummarize = function() {
+                var select = spanElem.down('select');
+                if (select.visible()) {
+                    select.hide();
+                    summary.update(spanElem._getValue()).show();
+                } else {
+                    select.show();
+                    summary.hide();
                 }
             };
             spanElem._setValue = function(value) {
@@ -115,7 +148,7 @@ define([], function() {
             var radioHTML = '<ul>';
             data.forEach(function(item) {
                 var inputId = inputSourceClass + "_" + _this._elementID + "_" + item;
-                radioHTML +=
+                radioHTML += '<div class="'+inputSourceClass+'"></div>' +
                     '<li class="term-entry">' +
                       '<input class="' + inputSourceClass + '" id="' + inputId + '" name="' + _this._dataName + '_' + _this._elementID + '_' + options.qualifierName + '" title="' + item + '" type="radio">' +
                       '<label for="' + inputId + '" title="' + item + '">' + item + '</label>' +
@@ -123,11 +156,26 @@ define([], function() {
             });
             radioHTML += '</ul>';
             spanElem.innerHTML = radioHTML;
+            var summary = spanElem.down('div');
+            summary.hide();
+            spanElem._getValue = function() {
+                return spanElem.down('input[name="' + _this._dataName + '_' + _this._elementID + '_' + options.qualifierName + '"]:checked').title;
+            };
             spanElem.down("li.term-entry").down('input').checked=true;
             spanElem._addValue = function(values) {
                 var fieldName = options.qualifierName || null;
                 if (fieldName) {
-                    values[fieldName] = spanElem.down('input[name="' + _this._dataName + '_' + _this._elementID + '_' + options.qualifierName + '"]:checked').title;
+                    values[fieldName] = spanElem._getValue();
+                }
+            };
+            spanElem._toggleSummarize = function() {
+                var radio = spanElem.down('li.term-entry');
+                if (radio.visible()) {
+                    radio.hide();
+                    summary.update(spanElem._getValue()).show();
+                } else {
+                    radio.show();
+                    summary.hide();
                 }
             };
             spanElem._setValue = function(value) {
@@ -151,12 +199,24 @@ define([], function() {
         withTextBox: function(collapsible, options) {
             var inputSourceClass = options && options.inputSourceClass || "";
             var spanElem = new Element('span');
-            var textArea = new Element('textarea', {'name' : this._dataName, 'class' : inputSourceClass});
-            spanElem.update(textArea);
+            spanElem.innerHTML = '<div class="'+inputSourceClass+'"></div>' +
+              '<textarea class="'+inputSourceClass+'" name="' + this._dataName + '">';
+            var summary = spanElem.down('div');
+            summary.hide();
             spanElem._addValue = function(values) {
                 var fieldName = options.qualifierName || null;
                 if (fieldName) {
                     values[fieldName] = spanElem.down('textarea').value;
+                }
+            };
+            spanElem._toggleSummarize = function() {
+                var textBox = spanElem.down('textarea');
+                if (textBox.visible()) {
+                    textBox.hide();
+                    summary.update(textBox.value).show();
+                } else {
+                    textBox.show();
+                    summary.hide();
                 }
             };
             spanElem._setValue = function(value) {
@@ -284,6 +344,31 @@ define([], function() {
                     }
                 }
             }
+            return this;
+        },
+
+        blur: function() {
+            if (this._termDetails.hasClassName('focused')) {
+                this._termDetails.removeClassName('focused');
+                this._toggleSummarize();
+            }
+        },
+
+        focus: function() {
+            if (!this._termDetails.hasClassName('focused')) {
+                this._termDetails.addClassName('focused');
+                this._toggleSummarize();
+            }
+
+        },
+
+        _toggleSummarize: function() {
+            for (var key in this._qualifierMap) {
+                if (this._qualifierMap.hasOwnProperty(key)) {
+                    var elem = this._qualifierMap[key];
+                    elem._toggleSummarize();
+                }
+            }
         },
 
         /**
@@ -291,8 +376,8 @@ define([], function() {
          * @private
          */
         _buildEmptyDialogue: function () {
-            this._termDetails = new Element('div', {'class' : 'summary-item'});
-            this._termDetails.innerHTML =
+            this._termDetails = new Element('div', {'class' : 'summary-item focused'});
+            this._termDetails.innerHTML = '<input type="hidden" value="' + this._elementID + '">' +
               '<div id="term_details_' + this._elementID + '" class="term-details">' +
                   '<dl></dl>' +
               '</div>';
