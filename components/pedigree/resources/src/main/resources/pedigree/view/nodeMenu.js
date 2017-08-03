@@ -946,11 +946,12 @@ define([
                         return [ data ];
                     };
                     this._attachFieldEventListeners(qualifiers, [
-                        data.name + ':status:changed',
                         data.name + ':term:deleted',
                         data.name + ':qualifiers:cleared',
                         data.name + ':qualifier:deleted',
-                        data.name + ':dialogue:switched'
+                        data.name + ':dialogue:added',
+                        data.name + ':notes:updated',
+                        'change'
                       ]);
 
 
@@ -1290,12 +1291,16 @@ define([
                 for (var cancerID in value) {
                     if (value.hasOwnProperty(cancerID)) {
                         var cancerData = value[cancerID];
+                        var qualifiers = container.down('table[id="cancers_' + cancerID + '"]');
                         if (cancerLegend._isSupportedCancer(cancerID)) {
-                            var qualifiers = container.down('table[id="cancers_' + cancerID + '"]');
-                            var qualifiersWidget = qualifiers._widget;
-                            qualifiersWidget.setValues(cancerData);
+                            // Only want to rebuild everything if importing data.
+                            qualifiers._widget.size() === 0 && qualifiers._widget.setValues(cancerData);
                         } else {
-                            // TODO: create a new widget and insert.
+                            if (qualifiers) {
+                                qualifiers._widget.size() === 0 && qualifiers._widget.setValues(cancerData);
+                            } else {
+                                // TODO: if qualifiers object doesn't exist, make one, set values.
+                            }
                         }
                     }
                 }

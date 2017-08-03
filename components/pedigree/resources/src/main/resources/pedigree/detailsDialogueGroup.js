@@ -187,9 +187,8 @@ define([
                 var qualifiers = values.qualifiers || [];
                 var _this = this;
                 qualifiers.forEach(function(qualifier) {
-                    _this.addDialogue(false).setValues(qualifier);
+                    _this.addDialogue(true).setValues(qualifier);
                 });
-                this._addDetailsClickListener();
             }
         },
 
@@ -198,19 +197,24 @@ define([
             Event.fire(this._qualifiersContainer, this._dataName + ':qualifiers:cleared');
         },
 
-        addDialogue: function(switchFocus) {
+        addDialogue: function(silent) {
             var dialogue = this._addDialogue();
             this._dialogueMap[dialogue.getID()] = dialogue;
             this._applyDialogueOptions(dialogue);
             this._addOnClearDetailsListener();
             !this._allowMultiDialogues && this._removeDetailsClickListener();
-            if (switchFocus) {
+            if (!silent) {
+                Event.fire(this._qualifiersContainer, this._dataName + ':dialogue:added');
                 this._crtFocus && this._crtFocus.removeClassName('focused');
                 this._crtFocus = dialogue.getDialogue().addClassName('focused');
                 Event.fire(this._qualifiersContainer, this._dataName + ':dialogue:focused');
             }
             this._dialogueHolder.show();
             return dialogue;
+        },
+
+        size: function() {
+            return this._qualifierNo;
         },
 
         _updateIdIfNeeded: function(newId) {
@@ -229,7 +233,8 @@ define([
             this._dialogueMap = {};
             this._dialogueHolder.update();
             this._dialogueHolder.hide();
-            !this._allowMultiDialogues && this._addDetailsClickListener();
+            this._removeDetailsClickListener();
+            (this._allowMultiDialogues || this.size() === 0) && this._addDetailsClickListener();
             this._removeOnClearDetailsListener();
         },
 
@@ -354,7 +359,7 @@ define([
         },
 
         _addDetailsClickListener: function() {
-            this._addDetailsButton.observe('click', this.addDialogue.bind(this, true));
+            this._addDetailsButton.observe('click', this.addDialogue.bind(this, false));
             this._addDetailsButton.show();
         },
 
@@ -405,7 +410,6 @@ define([
                         _this._crtFocus.removeClassName('focused');
                         Event.fire(_this._qualifiersContainer, _this._dataName + ':dialogue:blurred');
                         _this._crtFocus = null;
-                        Event.fire(_this._qualifiersContainer, _this._dataName + ':dialogue:switched');
                     }
                 }
             })
